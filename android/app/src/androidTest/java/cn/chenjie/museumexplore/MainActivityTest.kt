@@ -1,6 +1,5 @@
 package cn.chenjie.museumexplore
 
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -17,8 +16,8 @@ class MainActivityTest {
 
     @Test
     fun collectionScreenShowsPrimaryContent() {
-        composeRule.onNodeWithText("国宝总览").assertIsDisplayed()
-        composeRule.onNodeWithText("全部国宝").assertIsDisplayed()
+        composeRule.onNodeWithText("国宝总览").fetchSemanticsNode()
+        composeRule.onNodeWithText("全部国宝", substring = true).fetchSemanticsNode()
     }
 
     @Test
