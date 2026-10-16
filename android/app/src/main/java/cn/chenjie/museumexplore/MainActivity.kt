@@ -75,6 +75,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -115,6 +116,8 @@ import cn.chenjie.museumexplore.model.MuseumInfo
 import cn.chenjie.museumexplore.model.Relic
 import cn.chenjie.museumexplore.ui.MuseumTheme
 import cn.chenjie.museumexplore.ui.MuseumViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -134,8 +137,19 @@ private sealed class AppDestination(val route: String, val label: String) {
 @Composable
 private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
     val navController = rememberNavController()
-    val revision by viewModel.revision.collectAsState()
     val repository = viewModel.repository
+    val dataReady by produceState(initialValue = false, repository) {
+        withContext(Dispatchers.IO) {
+            repository.relics()
+            repository.museums()
+        }
+        value = true
+    }
+    if (!dataReady) {
+        LoadingScreen()
+        return
+    }
+    val revision by viewModel.revision.collectAsState()
     val context = LocalContext.current
     var recordRelic by remember { mutableStateOf<Relic?>(null) }
     var mapKeyDialog by remember { mutableStateOf(false) }
@@ -225,6 +239,16 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
     })
     if (aboutDialog) InfoDialog("博物馆探索", "195 件永禁出境文物\n本地记录版\n版本 0.3.0\n\n城市、照片、感想和收集记录默认保存在本机。地图服务需要用户自行配置高德 Key。") { aboutDialog = false }
     if (protocolDialog) InfoDialog("隐私与协议", "本应用的打卡、照片和感想默认只保存在本机。高德地图仅在用户配置 Key 并打开地图时使用网络服务，具体数据处理以高德地图服务协议和隐私政策为准。\n\nWikimedia Commons 图片按数据中的许可信息使用。") { protocolDialog = false }
+}
+
+@Composable
+private fun LoadingScreen() {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("博物馆探索", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text("正在整理你的国宝清单…", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+        }
+    }
 }
 
 @Composable
