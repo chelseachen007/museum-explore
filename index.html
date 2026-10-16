@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>博物馆探索 · 本地版</title>
+<style>
+  :root{
+    --paper:#f5f2ec; --card:#fffdf9; --ink:#221f1b; --ink2:#6b645b; --ink3:#9a938a;
+    --line:#e5e0d8; --line2:#efeae1; --red:#9c3b2e; --gold:#b08d4f; --green:#2e6b4f;
+    --serif:"Songti SC","STSong","Source Han Serif SC","Noto Serif SC",serif;
+    --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper); color:var(--ink); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; line-height:1.7;
+    min-height:100vh; padding:56px 24px 72px;
+  }
+  .wrap{max-width:880px;margin:0 auto}
+  header{text-align:center;margin-bottom:44px}
+  .kicker{
+    font-size:13px;letter-spacing:.28em;color:var(--red);font-weight:600;margin-bottom:14px;
+  }
+  h1{
+    font-family:var(--serif);font-size:40px;line-height:1.25;margin:0 0 14px;
+    font-weight:700;letter-spacing:.02em;
+  }
+  .sub{color:var(--ink2);font-size:15px;margin:0}
+  .sub b{color:var(--ink);font-weight:600}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:36px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+  a.entry{
+    display:block;text-decoration:none;color:inherit;background:var(--card);
+    border:1px solid var(--line);border-radius:16px;padding:26px 24px 22px;
+    transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    position:relative;overflow:hidden;
+  }
+  a.entry::before{
+    content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--red);
+    opacity:0;transition:opacity .16s ease;
+  }
+  a.entry:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(34,31,27,.09);border-color:#ddd5c8}
+  a.entry:hover::before{opacity:1}
+  a.entry.hz::before{background:var(--green)}
+  .etag{
+    display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.06em;
+    color:var(--red);background:#f7ece9;border-radius:999px;padding:3px 10px;margin-bottom:14px;
+  }
+  a.entry.hz .etag{color:var(--green);background:#e9f0eb}
+  .entry h2{font-family:var(--serif);font-size:22px;margin:0 0 10px;font-weight:700}
+  .entry p{margin:0;color:var(--ink2);font-size:13.5px;line-height:1.75}
+  .entry .meta{
+    margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);
+    font-size:12.5px;color:var(--ink3);display:flex;gap:14px;flex-wrap:wrap;
+  }
+  .note{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:20px 22px;font-size:13.5px;color:var(--ink2);line-height:1.85;
+  }
+  .note h3{
+    margin:0 0 10px;font-size:14px;color:var(--ink);font-family:var(--serif);
+    display:flex;align-items:center;gap:8px;
+  }
+  .note ul{margin:0;padding-left:20px}
+  .note li{margin-bottom:6px}
+  .note li:last-child{margin-bottom:0}
+  .note b{color:var(--ink)}
+  .warn{color:var(--red);font-weight:600}
+  footer{
+    margin-top:32px;text-align:center;font-size:12px;color:var(--ink3);line-height:2;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">博 物 馆 探 索</div>
+    <h1>195 件永禁出境文物</h1>
+    <p class="sub">国家文物局三批目录 · <b>一级文物中的孤品与易损品</b> · 59 家收藏单位 · 40 座城市</p>
+  </header>
+
+  <div class="grid">
+    <a class="entry" href="195件永禁文物·博物馆探索.html">
+      <span class="etag">全国 · 195 件</span>
+      <h2>国宝清单与足迹</h2>
+      <p>按批次 / 类别 / 省份 / 博物馆筛选，全文搜索。每件都写了「为什么它不能出境」。可勾选打卡、拍照记录、生成足迹分享图。</p>
+      <div class="meta"><span>195 件</span><span>42 件实物照片</span><span>3D 就绪</span></div>
+    </a>
+
+    <a class="entry hz" href="杭州国宝地图.html">
+      <span class="etag">杭州 · 7 件</span>
+      <h2>杭州国宝地图</h2>
+      <p>杭州 7 件分布在 3 家博物馆，配腾讯地图定位与两条参观路线。适合当作周末实际跑一趟的导航。</p>
+      <div class="meta"><span>3 家博物馆</span><span>2 条路线</span><span>地图定位</span></div>
+    </a>
+  </div>
+
+  <div class="note">
+    <h3>关于你的数据</h3>
+    <ul>
+      <li>打卡记录、照片<b>全部存在这台电脑的浏览器里</b>，不上传、不联网、不需要账号。</li>
+      <li>两个页面的数据是<b>互通的</b>：在杭州页给玉琮王拍的照片，打开全国页也能看到，打卡状态也一样。</li>
+      <li><span class="warn">要留意的是：</span>数据跟着浏览器走。清理浏览器数据、换浏览器、换电脑都会丢。重要的话建议定期导出备份。</li>
+    </ul>
+  </div>
+
+  <footer>
+    图片来自 Wikimedia Commons，均为公有领域或 CC 授权，每张都标注了许可与作者<br>
+    内容依据国家文物局官方目录整理，仅供个人学习参考
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,42 @@
+{
+  "故宫博物院": {
+    "intro": "以明清故宫建筑群和中国古代艺术藏品为核心的综合性博物馆。",
+    "openingHours": "旺季（4月1日—10月31日）8:30—17:00；淡季（11月1日—次年3月31日）8:30—16:30；周一闭馆（法定节假日除外）。",
+    "reservation": "通过故宫博物院官方预约渠道实名预约，具体以官方公告为准。",
+    "wechat": "故宫博物院",
+    "miniProgram": "故宫博物院",
+    "sources": ["https://www.dpm.org.cn/", "https://www.dpm.org.cn/Visit.html"],
+    "verifiedAt": "2026-10-16",
+    "status": "verified_partial"
+  },
+  "中国国家博物馆": {
+    "intro": "以中国历史与中华文明主题收藏、研究和展示为主的国家级综合博物馆。",
+    "openingHours": "9:00—17:30，16:00停止入馆；周一闭馆（法定节假日安排另行公告）。",
+    "reservation": "通过中国国家博物馆官方预约渠道实名预约，具体以当日公告为准。",
+    "wechat": "中国国家博物馆",
+    "miniProgram": "中国国家博物馆",
+    "sources": ["https://www.chnmuseum.cn/", "https://www.chnmuseum.cn/yuyue/"],
+    "verifiedAt": "2026-10-16",
+    "status": "verified_partial"
+  },
+  "湖北省博物馆": {
+    "intro": "以湖北地区考古发现和楚文化、曾侯乙墓出土文物为重要特色的省级博物馆。",
+    "openingHours": "9:00—17:00，16:00停止入馆；周一闭馆（法定节假日安排另行公告）。",
+    "reservation": "通过湖北省博物馆官方预约渠道实名预约，具体以官方公告为准。",
+    "wechat": "湖北省博物馆",
+    "miniProgram": "湖北省博物馆",
+    "sources": ["https://www.hbww.org/"],
+    "verifiedAt": "2026-10-16",
+    "status": "verified_partial"
+  },
+  "湖南博物院": {
+    "intro": "以湖南地区历史文化、马王堆汉墓出土文物和楚文化为重要特色的省级博物院。",
+    "openingHours": "具体开放时段和闭馆日以湖南博物院官方公告、预约页面为准。",
+    "reservation": "通过湖南博物院官方预约渠道实名预约。",
+    "wechat": "湖南博物院",
+    "miniProgram": "湖南博物院",
+    "sources": ["https://www.hnmuseum.com/"],
+    "verifiedAt": "2026-10-16",
+    "status": "official_source_pending_hours"
+  }
+}

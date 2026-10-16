@@ -1,0 +1,1162 @@
+# -*- coding: utf-8 -*-
+"""生成「杭州国宝地图」原型 v0.2（腾讯地图合规版 + 示意图 + 官方入口 + 足迹分享图）"""
+import json, os, sys
+# 全部路径相对脚本自身定位，整个工作区搬到哪里都能跑
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
+from common import art_svg, site_of
+
+OUT = os.path.dirname(_HERE)          # 工作区根目录（tools 的上一级）
+with open(os.path.join(OUT, '195件永禁文物.json'), encoding='utf-8') as f:
+    data = json.load(f)
+
+CAT_MAP = {
+    '青铜器': '青铜器', '杂项·青铜器': '青铜器',
+    '陶瓷': '陶瓷', '陶器': '陶器', '陶塑': '陶器',
+    '玉器': '玉器', '玉器·水晶': '玉器', '玉器·玛瑙': '玉器',
+    '书法': '书画', '绘画': '书画', '书画': '书画',
+    '漆木器': '漆木器', '杂项·漆木器': '漆木器',
+    '丝织': '丝织刺绣', '杂项·丝织': '丝织刺绣', '杂项·刺绣': '丝织刺绣',
+    '壁画': '壁画石刻', '杂项·壁画': '壁画石刻', '石刻': '壁画石刻',
+    '杂项·石刻': '壁画石刻', '画像砖': '画像砖',
+    '金银器': '金银器', '杂项·金银器': '金银器', '杂项·金器': '金银器',
+}
+for i in data['items']:
+    i['catMain'] = CAT_MAP.get(i['cat'], '文献杂项')
+
+HZ = [i for i in data['items'] if i['city'] == '杭州']
+assert len(HZ) == 7, f'杭州件数异常: {len(HZ)}'
+
+MUSEUMS = [
+    {
+        "key": "zj", "color": "#9c3b2e", "short": "浙博之江馆",
+        "name": "浙江省博物馆（之江馆区）",
+        "addr": "杭州市西湖区文景路与碧波路交叉口 · 之江文化中心",
+        "metro": "地铁 6 号线「枫桦西路」站，步行约 10 分钟",
+        "hours": "通常周一闭馆，法定节假日除外",
+        "fallback": [30.1640, 120.0740],
+        "match": "浙江省博物馆",
+        "url": site_of("浙江省博物馆"),
+        "note": "全省最大的综合馆，2023 年 8 月开放，浙博绝大多数镇馆之宝都在这里。"
+    },
+    {
+        "key": "hz", "color": "#2e6b5e", "short": "杭州博物馆",
+        "name": "杭州博物馆",
+        "addr": "杭州市上城区粮道山 18 号（吴山广场旁）",
+        "metro": "地铁 1 号线「定安路」站 C 口南行约 700 米；或 7 号线「吴山广场」站 D 口东行约 400 米",
+        "hours": "9:00–16:30（16:00 停止入馆），周二闭馆",
+        "fallback": [30.2391, 120.1665],
+        "match": "杭州博物馆",
+        "url": site_of("杭州博物馆"),
+        "note": "国家一级博物馆，市井里的「宝藏馆」，战国水晶杯常年陈列在展厅正中。"
+    },
+    {
+        "key": "la", "color": "#a9803a", "short": "临安博物馆",
+        "name": "临安博物馆",
+        "addr": "杭州市临安区锦城街道天目路 800 号（吴越文化公园内）",
+        "metro": "地铁 16 号线「农林大学」站，转公交 807 路或打车约 1.5 公里",
+        "hours": "通常周一闭馆，法定节假日除外",
+        "fallback": [30.2280, 119.7220],
+        "match": "临安",
+        "url": None,
+        "note": "普利兹克奖得主王澍设计，馆藏吴越国钱氏家族墓出土文物，是吴越文化的富矿。"
+    }
+]
+
+for m in MUSEUMS:
+    m['items'] = [i for i in HZ if m['match'] in i['museum']]
+    assert m['items'], f"{m['name']} 没有匹配到文物"
+
+slim = [{
+    'id': i['id'], 'name': i['name'], 'era': i['era'], 'cat': i['catMain'],
+    'museum': i['museum'], 'batchName': i['batchName'], 'tags': i['tags'],
+    'reason': i['reason'], 'story': i['story'],
+    'image': i.get('image'), 'model': i.get('model'), 'imageCredit': i.get('imageCredit'),
+    'art': art_svg(i['catMain'], 56),
+    'mk': next(m['key'] for m in MUSEUMS if m['match'] in i['museum'])
+} for i in HZ]
+
+payload = json.dumps({
+    'items': slim,
+    'museums': [dict((k, v) for k, v in m.items() if k != 'items') | {'itemIds': [i['id'] for i in m['items']]}
+                for m in MUSEUMS]
+}, ensure_ascii=False, separators=(',', ':'))
+
+HTML = r'''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>杭州国宝地图 · 7 件永禁出境文物</title>
+<style>
+:root{--bg:#f5f2ec;--panel:#fffdfa;--panel2:#faf7f2;--ink:#221f1b;--ink2:#6b645b;--ink3:#9a938a;
+  --line:#e7e1d6;--line2:#f0ebe2;--red:#9c3b2e;--jade:#2e6b5e;--gold:#a9803a;
+  --shadow:0 1px 2px rgba(60,45,30,.05),0 8px 24px rgba(60,45,30,.06)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.7;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.serif{font-family:"Songti SC","Noto Serif SC","STSong",serif}
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+.hero{background:radial-gradient(1000px 340px at 10% -30%,#efe6d6 0%,transparent 62%),
+  radial-gradient(760px 300px at 94% -8%,#e6ece6 0%,transparent 58%),linear-gradient(180deg,#fffdfa,#f7f3ec);
+  border-bottom:1px solid var(--line);padding:46px 0 30px}
+.kicker{display:inline-flex;font-size:12.5px;letter-spacing:.14em;color:var(--red);background:#fbf0ec;
+  border:1px solid #f0dcd5;border-radius:999px;padding:5px 14px;margin-bottom:18px;font-weight:600}
+h1{font-family:"Songti SC",serif;font-size:clamp(30px,5vw,46px);line-height:1.14;margin:0 0 8px;font-weight:700}
+h1 .num{color:var(--red)}
+.lede{font-size:16px;color:var(--ink2);max-width:720px;margin:12px 0 0}
+.statrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+.sbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 18px;box-shadow:var(--shadow)}
+.sbox b{font-family:"Songti SC",serif;font-size:22px;color:var(--red)}
+.sbox small{color:var(--ink3);font-size:12px;margin-left:6px}
+section{padding:30px 0 0}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.sec-head h2{font-family:"Songti SC",serif;font-size:21px;margin:0;font-weight:700}
+.sec-head .hint{color:var(--ink3);font-size:13px}
+.mapcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.mapbox{position:relative}
+#map{width:100%;height:400px;background:#eae5dc}
+#mapTip{position:absolute;top:0;left:0;right:0;display:none;flex-direction:column;gap:3px;
+  padding:9px 16px;background:rgba(245,241,234,.97);border-bottom:1px solid var(--line);
+  font-size:12.5px;color:var(--ink2);line-height:1.7;z-index:6}
+#mapTip b{font-size:13px;color:var(--ink)}
+#mapTip code{background:#eae3d8;border-radius:5px;padding:1px 6px;font-size:12px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--line2);font-size:13px}
+.legend button{display:flex;align-items:center;gap:7px;background:transparent;border:1px solid var(--line);
+  border-radius:999px;padding:5px 13px;font-family:inherit;font-size:13px;color:var(--ink2);cursor:pointer;transition:.15s}
+.legend button:hover{border-color:#cbbfae}
+.legend .dot{width:9px;height:9px;border-radius:50%}
+.mapnote{padding:10px 16px;font-size:12.5px;color:var(--ink3);border-top:1px solid var(--line2);background:var(--panel2)}
+/* 照片墙 */
+.photowall{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px;
+  box-shadow:var(--shadow);margin-top:14px}
+.pwhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.pwhead h3{font-family:"Songti SC",serif;font-size:16.5px;margin:0;font-weight:700}
+.pwhead span{font-size:12.5px;color:var(--ink3);line-height:1.7}
+.pwall{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:9px}
+.pwall:empty{display:none}
+.pcell{position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;cursor:zoom-in;
+  border:1px solid var(--line2);background:#f5f1e9}
+.pcell img{width:100%;height:100%;object-fit:cover;display:block}
+.pcell .pcn{position:absolute;left:0;right:0;bottom:0;font-size:10px;color:#fff;padding:3px 6px;
+  background:linear-gradient(transparent,rgba(0,0,0,.62));white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.viewer{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:50;
+  background:rgba(38,32,26,.62);backdrop-filter:blur(3px);padding:24px}
+.viewer.open{display:flex}
+.vbox{position:relative;background:var(--panel);border-radius:18px;padding:16px 16px 12px;
+  width:min(760px,100%);box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.vstage{width:100%;height:min(62vh,520px);border-radius:12px;background:#f5f1e9;overflow:hidden}
+.vstage model-viewer{width:100%;height:100%;--poster-color:transparent}
+.vname{font-family:"Songti SC",serif;font-size:17px;font-weight:700;margin-top:12px;color:var(--ink)}
+.vhint{font-size:12px;color:var(--ink3);margin-top:3px}
+.vclose{position:absolute;top:10px;right:12px;width:30px;height:30px;border-radius:50%;border:none;
+  background:rgba(0,0,0,.06);color:var(--ink2);font-size:19px;line-height:1;cursor:pointer;z-index:2}
+.vclose:hover{background:rgba(0,0,0,.12)}
+.thumb[data-3d]{cursor:zoom-in}
+.progress{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px;
+  box-shadow:var(--shadow);margin-top:14px;display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+.ring{position:relative;width:78px;height:78px;flex:none}
+.ring span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:"Songti SC",serif;font-size:19px;font-weight:700;color:var(--red)}
+.ptxt b{font-size:15px}
+.ptxt p{margin:2px 0 0;font-size:13px;color:var(--ink2)}
+.pbar{height:7px;background:#efe9df;border-radius:4px;overflow:hidden;margin-top:8px}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,#c0603f,#9c3b2e);transition:.35s;width:0}
+.mprog{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:14px;margin-top:2px}
+.mrow{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.mrow .mn{flex:none;width:130px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow .mb{flex:1;height:8px;background:#efe9df;border-radius:4px;overflow:hidden}
+.mrow .mb i{display:block;height:100%;background:linear-gradient(90deg,#3f8b74,#2e6b5e);transition:.4s}
+.mrow .mv{flex:none;width:44px;text-align:right;color:var(--ink3);font-size:12.5px}
+.sharebtn{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;border:0;
+  border-radius:10px;padding:10px 18px;font-family:inherit;font-size:13.5px;cursor:pointer;font-weight:600;margin-top:6px}
+.sharebtn:hover{background:#3a352e}
+.mcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+  margin-bottom:16px;overflow:hidden;scroll-margin-top:20px;transition:.25s}
+.mcard.flash{box-shadow:0 0 0 3px rgba(156,59,46,.18),var(--shadow)}
+.mhead{display:flex;align-items:flex-start;gap:14px;padding:18px 20px;border-bottom:1px solid var(--line2);
+  background:linear-gradient(180deg,#fffdfa,#faf6f0)}
+.mhead .bar{width:5px;align-self:stretch;border-radius:3px;flex:none}
+.mhead .mtitle{flex:1}
+.mhead h3{font-family:"Songti SC",serif;font-size:19px;margin:0 0 6px;font-weight:700}
+.mhead .mline{font-size:13px;color:var(--ink2);margin:2px 0;display:flex;gap:7px}
+.mhead .mline em{font-style:normal;color:var(--ink3);flex:none}
+.mhead .mcount{font-family:"Songti SC",serif;font-size:15px;font-weight:700;color:var(--ink2);white-space:nowrap}
+.mbody{padding:16px 20px 20px}
+.mdesc{font-size:13px;color:var(--ink3);margin:0 0 14px}
+.offi{margin:0 0 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px}
+.offi a,.offi button{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);
+  background:var(--panel2);border-radius:8px;padding:5px 11px;font-family:inherit;font-size:12.5px;
+  color:var(--ink2);cursor:pointer;transition:.15s;text-decoration:none}
+.offi a:hover,.offi button:hover{border-color:#c9b8a4;color:var(--ink)}
+.offi .hintline{color:var(--ink3);font-size:12px}
+.item{border:1px solid var(--line2);border-radius:12px;padding:15px 17px;background:var(--panel2);
+  margin-bottom:11px;position:relative;transition:.18s;display:flex;gap:15px;align-items:flex-start}
+.item.done{background:#f6faf7;border-color:#d9e5dd}
+.item .thumb{flex:none;width:72px;height:72px;border-radius:10px;background:#f5f1e9;border:1px solid var(--line2);
+  display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.item .thumb img{width:100%;height:100%;object-fit:cover}
+.item .thumb model-viewer{width:100%;height:100%;--poster-color:transparent;background:#f5f1e9}
+.item .thumb .tg{position:absolute;left:0;right:0;bottom:0;font-size:8.5px;text-align:center;color:#9a938a;
+  background:rgba(255,253,250,.82);line-height:1.5;z-index:2}
+.item .thumb .tg.d3{color:#7a5a2e;background:rgba(247,238,222,.9);font-weight:600}
+.item .ic{flex:1;min-width:0}
+.credit{margin-top:8px;font-size:11.5px;color:var(--ink3);line-height:1.6}
+.credit a{color:var(--ink3);text-decoration:underline;text-decoration-color:var(--line)}
+.credit a:hover{color:var(--ink2)}
+.credit span{color:#b3aca1}
+.item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
+.item h4{font-family:"Songti SC",serif;font-size:16.5px;margin:0;line-height:1.35;font-weight:700;padding-right:30px}
+.badge{flex:none;font-size:11px;font-weight:700;border-radius:6px;padding:3px 8px;color:#fff}
+.b1{background:var(--red)} .b2{background:var(--jade)} .b3{background:#33567e}
+.imeta{display:flex;flex-wrap:wrap;gap:5px 13px;font-size:12.5px;color:var(--ink2);margin-bottom:9px}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.tag{font-size:11.5px;background:#f4efe7;border:1px solid #ebe3d6;border-radius:6px;padding:2px 8px;color:#6a6055}
+.whyline{font-size:13.5px;line-height:1.68;color:#3d3730;background:#fdfaf5;border-left:3px solid var(--gold);
+  border-radius:0 8px 8px 0;padding:9px 13px;margin-bottom:10px}
+.whyline b{color:var(--red)}
+.story{font-size:13.5px;line-height:1.75;color:var(--ink2);margin:0;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.item.open .story{-webkit-line-clamp:unset;display:block}
+.check{position:absolute;right:15px;top:14px;width:24px;height:24px;border-radius:8px;
+  border:1.5px solid var(--line);background:var(--panel);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:13px;color:transparent;transition:.15s}
+.item.done .check{background:var(--jade);border-color:var(--jade);color:#fff}
+/* ---- 拍照打卡 ---- */
+.ifoot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:10px}
+.more{margin-top:0;font-size:12.5px;color:var(--red);cursor:pointer;border:0;background:transparent;
+  padding:0;font-family:inherit;font-weight:600}
+.snap{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink2);cursor:pointer;
+  border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:4px 10px;
+  font-family:inherit;transition:.15s}
+.snap:hover{border-color:#c9b8a4;color:var(--ink)}
+.snap.has{border-color:#bcd6c9;color:var(--jade);background:#f2f8f5;font-weight:600}
+.pstrip{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.pstrip:empty{display:none}
+.pthumb{width:58px;height:58px;border-radius:9px;overflow:hidden;position:relative;cursor:zoom-in;
+  border:1px solid var(--line2);background:#f5f1e9;flex:none}
+.pthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.pthumb .px{position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;border:0;
+  background:rgba(0,0,0,.5);color:#fff;font-size:11px;line-height:1;cursor:pointer;display:none;padding:0}
+.pthumb:hover .px{display:block}
+.padd{width:58px;height:58px;border-radius:9px;border:1px dashed var(--line);background:transparent;
+  color:var(--ink3);font-size:20px;cursor:pointer;flex:none;font-family:inherit}
+.padd:hover{border-color:#c9b8a4;color:var(--ink2)}
+/* 灯箱 */
+.lb{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:60;
+  background:rgba(24,20,16,.9);padding:24px}
+.lb.open{display:flex}
+.lb figure{margin:0;max-width:min(880px,100%);display:flex;flex-direction:column;align-items:center;gap:11px}
+.lb img{max-width:100%;max-height:72vh;border-radius:12px;display:block;background:#2b2620}
+.lb figcaption{color:#e6e0d6;font-size:13px;text-align:center;line-height:1.7}
+.lb button{position:absolute;border:0;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;
+  border-radius:999px;font-family:inherit;font-size:13px;padding:7px 14px}
+.lb button:hover{background:rgba(255,255,255,.28)}
+.lb .lbx{right:20px;top:18px;width:34px;height:34px;padding:0;font-size:17px}
+.lb .lbd{left:20px;top:18px;color:#ffb4a8}
+.lb .lbprev{left:20px;top:50%;transform:translateY(-50%);width:38px;height:38px;padding:0;font-size:17px}
+.lb .lbnext{right:20px;top:50%;transform:translateY(-50%);width:38px;height:38px;padding:0;font-size:17px}
+.routes{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.route{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
+.route h3{font-family:"Songti SC",serif;font-size:16.5px;margin:0 0 4px;font-weight:700}
+.route .rtag{font-size:12px;color:var(--ink3);margin-bottom:12px}
+.route ol{margin:0;padding-left:20px;font-size:13.5px;color:var(--ink2);line-height:1.9}
+.route ol b{color:var(--ink)}
+.route .tip{margin-top:12px;font-size:12.5px;color:var(--ink3);border-top:1px dashed var(--line);padding-top:10px}
+.why{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;box-shadow:var(--shadow)}
+.why .law{border-left:3px solid var(--red);background:#fdf7f5;border-radius:0 10px 10px 0;padding:12px 16px;
+  color:#5c4a44;font-size:13.5px;margin:0 0 16px}
+.logic{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:11px}
+.lcard{background:var(--panel2);border:1px solid var(--line2);border-radius:11px;padding:13px 15px}
+.lcard b{display:block;font-size:13.5px;margin-bottom:4px}
+.lcard p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.6}
+footer{padding:40px 0 56px;color:var(--ink3);font-size:12.5px;text-align:center;line-height:1.9;margin-top:30px}
+footer b{color:var(--ink2)}
+@media(max-width:640px){#map{height:300px}.hero{padding:34px 0 24px}
+  .progress{grid-template-columns:1fr}.item{flex-direction:column}
+  .item .thumb{width:100%;height:96px}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">博物馆探索主线 · 杭州站</div>
+    <h1 class="serif">杭州国宝地图<br><span class="num">7</span> 件永禁出境文物</h1>
+    <p class="lede">全国 195 件「禁止出国（境）展览文物」里，杭州有 7 件，分布在 3 家博物馆。
+      它们不是杭州最有名的，但每一件都满足同一个条件——<b>毁了就再也没有，或者经不起一次长途折腾</b>。</p>
+    <div class="statrow">
+      <div class="sbox"><b>7</b><small>件永禁文物</small></div>
+      <div class="sbox"><b>3</b><small>家博物馆</small></div>
+      <div class="sbox"><b>2</b><small>条推荐路线</small></div>
+      <div class="sbox"><b>约 45 km</b><small>最远跨度（市区↔临安）</small></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section>
+    <div class="sec-head"><h2>三馆分布</h2><span class="hint">点地图上的标记，或点下方图例定位场馆</span></div>
+    <div class="mapcard">
+      <div class="mapbox">
+        <div id="map"></div>
+        <div id="mapTip">
+          <b id="tipTitle">以本地文件方式打开，地图标记可能不显示</b>
+          <div id="tipBody">当前协议为 <code>file://</code>，腾讯地图的检索与标记接口会被拒绝，底图可能正常但看不到场馆标记。<br>
+          在 WorkBuddy 预览面板中打开（http）即可完整显示。地图不可用不影响下方的文物清单、打卡与足迹统计。</div>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="mapnote">📍 标记位置由腾讯地图地点检索自动定位，仅供参观规划参考；实际出行请以官方地图导航为准。</div>
+    </div>
+
+    <div class="progress">
+      <div class="ring">
+        <svg width="78" height="78"><circle cx="39" cy="39" r="33" fill="none" stroke="#efe9df" stroke-width="7"/>
+        <circle id="ring" cx="39" cy="39" r="33" fill="none" stroke="#9c3b2e" stroke-width="7"
+          stroke-linecap="round" stroke-dasharray="207.3" stroke-dashoffset="207.3"/></svg>
+        <span id="ringTxt">0/7</span>
+      </div>
+      <div class="ptxt">
+        <b>我的足迹</b>
+        <p id="ptip">勾选看过的文物，进度会存在本地，下次打开还在</p>
+        <div class="pbar"><i id="pbar"></i></div>
+        <button class="sharebtn" id="shareBtn">生成我的足迹图</button>
+      </div>
+      <div class="mprog" id="mprog"></div>
+    </div>
+
+    <div class="photowall" id="photowall">
+      <div class="pwhead">
+        <h3>我的照片墙</h3>
+        <span id="pwmeta">还没有照片。在下面任意一件文物上点「拍照打卡」，照片只存在你这台设备上</span>
+      </div>
+      <div class="pwall" id="pwall"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>逐馆清单</h2><span class="hint">按「为什么不能出境」讲清每件文物的分量</span></div>
+    <div id="museums"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>两条推荐路线</h2><span class="hint">地理上分两片，一天一片刚好</span></div>
+    <div class="routes">
+      <div class="route">
+        <h3>路线 A · 西湖双馆（半日～一日）</h3>
+        <div class="rtag">市区片 · 6 件国宝 · 两地相距约 10 km</div>
+        <ol>
+          <li>上午 <b>杭州博物馆</b>（吴山广场）— 看 <b>战国水晶杯</b>，展厅正中就是它</li>
+          <li>中午 河坊街 / 吴山一带吃饭</li>
+          <li>下午 <b>浙江省博物馆之江馆区</b>（转塘）— 一口气看 <b>5 件</b>：良渚玉琮王、良渚神人兽面纹玉钺、河姆渡朱漆碗、河姆渡陶灶、双鸟朝阳纹象牙雕刻器</li>
+        </ol>
+        <div class="tip">浙博之江馆体量很大，5 件分散在「浙江一万年」通史陈列里，建议预留 3 小时以上。周一闭馆。</div>
+      </div>
+      <div class="route">
+        <h3>路线 B · 吴越国专线（一日）</h3>
+        <div class="rtag">临安片 · 1 件国宝 + 一整个吴越国</div>
+        <ol>
+          <li>上午 出发前往 <b>临安博物馆</b>（约 45 km，自驾约 1 小时）</li>
+          <li>看 <b>唐越窑青釉褐彩云纹五足炉</b>——出自吴越国王钱镠之母水邱氏墓</li>
+          <li>顺带看同馆的钱氏家族墓出土文物群（越窑秘色瓷的富矿）</li>
+          <li>下午 可加游吴越文化公园 / 衣锦城遗址</li>
+        </ol>
+        <div class="tip">临安博物馆由王澍设计，本身值得一看。若只有一件文物要打卡，它是杭州 7 件里最「偏远」的一件。</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>为什么偏偏是这 7 件</h2><span class="hint">杭州版的入选逻辑</span></div>
+    <div class="why">
+      <p class="law">硬门槛：《文物保护法实施条例》第四十九条——<b>一级文物中的孤品和易损品，禁止出境展览。</b>
+        杭州这 7 件，要么是存世唯一，要么是材质经不起运输。</p>
+      <div class="logic">
+        <div class="lcard"><b>① 孤品 · 不可替代</b><p>良渚玉琮王是良渚玉琮之首，水晶杯是战国水晶器孤例，双鸟朝阳象牙雕是河姆渡的标志物——存世唯一，毁一件少一件。</p></div>
+        <div class="lcard"><b>② 材质脆弱 · 经不起折腾</b><p>朱漆碗是最早的漆器之一，漆层一裂就不可逆；水晶杯壁薄仅 1–2 毫米；象牙雕属明令禁出的象牙类。</p></div>
+        <div class="lcard"><b>③ 文明坐标 · 起源物证</b><p>玉琮王与神人兽面纹玉钺是「中华五千年文明」最硬的物证，良渚古城 2019 年列入世界遗产。</p></div>
+        <div class="lcard"><b>④ 工艺超前 · 时代之最</b><p>水晶杯用整块水晶掏膛，工艺远超战国水平，被戏称「穿越文物」；越窑五足炉是秘色瓷系上品。</p></div>
+      </div>
+      <p style="margin:16px 0 0;font-size:12.5px;color:var(--ink3);border-top:1px dashed var(--line);padding-top:12px">
+        页面中的文物影像：优先采用 <b>Wikimedia Commons</b> 的公有领域 / CC 授权实物照片（每件下方标注许可与作者）；
+        未匹配到的用按材质类别绘制的<b>示意图，不是实物照片</b>。实物影像请以各馆官网 / 官方小程序为准。</p>
+    </div>
+  </section>
+</div>
+
+<footer class="wrap">
+  <div>数据来源：国家文物局三批《禁止出国（境）展览文物目录》官方文件</div>
+  <div>文物影像来自 Wikimedia Commons（公有领域 / CC 授权，已署名）；未匹配到的用类别示意图</div>
+  <div>你拍的照片与打卡记录<b>只保存在这台设备的浏览器里</b>，不会上传到任何服务器</div>
+  <div>开放时间与交通信息来自公开渠道，<b>出行前请以各馆官方公告为准</b></div>
+  <div style="margin-top:8px">杭州国宝地图 · 原型 v0.2 · 为「奔跑的小胖」的博物馆探索主线而做</div>
+</footer>
+
+<div id="viewer" class="viewer" aria-hidden="true">
+  <div class="vbox">
+    <button class="vclose" id="vclose" title="关闭（Esc）">×</button>
+    <div class="vstage" id="vstage"></div>
+    <div class="vname" id="vname"></div>
+    <div class="vhint">拖动旋转 · 滚轮缩放 · 双指手势可用</div>
+  </div>
+</div>
+
+<div id="lb" class="lb" aria-hidden="true">
+  <button class="lbx" id="lbx" title="关闭（Esc）">×</button>
+  <button class="lbd" id="lbd">删除这张</button>
+  <button class="lbprev" id="lbprev" title="上一张">‹</button>
+  <button class="lbnext" id="lbnext" title="下一张">›</button>
+  <figure>
+    <img id="lbimg" alt="">
+    <figcaption id="lbcap"></figcaption>
+  </figure>
+</div>
+
+<script>
+(function () {
+  var host = 'http://127.0.0.1:__WB_HTTP_PORT__/_TMapService/_wbt/__WB_TMAP_SECRET__';
+  // 占位符未被服务端替换时（例如直接用 file:// 打开），不注册代理地址，
+  // 否则腾讯地图会在库内部发起非法 XHR，控制台刷错误
+  if (host.indexOf('__WB_') === -1) window._TMapSecurityConfig = { serviceHost: host };
+})();
+</script>
+<script src="https://map.qq.com/api/gljs?v=1.exp&libraries=service__TMAP_KEY_PARAM__"></script>
+<script>
+const DATA = __PAYLOAD__;
+const MUSEUMS = DATA.museums, ITEMS = DATA.items;
+const LSKEY = 'guobao_visited_v1';
+// 两页共用同一个键，这样在杭州页勾的打卡在全国页也认，反之亦然。
+// 旧版本两页各存各的（museum195_visited_v1 / hz_guobao_visited_v1），启动时合并过来，别丢数据。
+const OLD_LSKEYS = ['museum195_visited_v1', 'hz_guobao_visited_v1'];
+let visited = new Set(JSON.parse(localStorage.getItem(LSKEY) || '[]'));
+const save = () => localStorage.setItem(LSKEY, JSON.stringify([...visited]));
+(function migrateVisited() {
+  let moved = false;
+  for (const k of OLD_LSKEYS) {
+    try {
+      const old = JSON.parse(localStorage.getItem(k) || '[]');
+      if (Array.isArray(old)) old.forEach(id => {
+        if (typeof id === 'number' && !visited.has(id)) { visited.add(id); moved = true; }
+      });
+      localStorage.removeItem(k);   // 迁移完必须删掉旧键，否则取消打卡后刷新又会被迁移回来
+    } catch (e) {}
+  }
+  if (moved) save();
+})();
+
+/* ---------- 图例 ---------- */
+const legend = document.getElementById('legend');
+MUSEUMS.forEach(m => {
+  const b = document.createElement('button');
+  b.innerHTML = '<span class="dot" style="background:' + m.color + '"></span>' + m.name;
+  b.onclick = () => focusMuseum(m.key);
+  legend.appendChild(b);
+});
+
+/* ---------- 场馆卡片 ---------- */
+document.getElementById('museums').innerHTML = MUSEUMS.map(m => {
+  const its = ITEMS.filter(i => i.mk === m.key);
+  const offi = '<div class="offi">' +
+    (m.url ? '<a href="' + m.url + '" target="_blank" rel="noopener">官网 ↗</a>' : '') +
+    '<button class="wxbtn" data-m="' + m.name + '">复制馆名 · 去微信找官方</button>' +
+    '<span class="hintline">实物图片 / 展厅信息见官方渠道</span></div>';
+  return '<div class="mcard" id="mk-' + m.key + '">' +
+    '<div class="mhead"><div class="bar" style="background:' + m.color + '"></div>' +
+    '<div class="mtitle"><h3>' + m.name + '</h3>' +
+    '<div class="mline"><em>地址</em><span>' + m.addr + '</span></div>' +
+    '<div class="mline"><em>交通</em><span>' + m.metro + '</span></div>' +
+    '<div class="mline"><em>开放</em><span>' + m.hours + '</span></div></div>' +
+    '<div class="mcount">' + its.length + ' 件</div></div>' +
+    '<div class="mbody"><p class="mdesc">' + m.note + '</p>' + offi +
+    its.map(it => itemHTML(it)).join('') + '</div></div>';
+}).join('');
+
+// 类别示意图索引：3D / 照片加载失败时按类别回退
+const ART = {};
+ITEMS.forEach(i => { if (i.art) ART[i.cat] = i.art; });
+
+function creditHTML(it) {
+  const c = it.imageCredit;
+  if (!it.image || !c) return '';
+  const bits = [];
+  if (c.license) bits.push(c.license);
+  if (c.author) {
+    // Commons 的 Artist 字段有时是空的，回退到 Credit / 上传者。
+    // CC BY-SA 要求署名，但得让人知道这个名字代表什么身份。
+    const tag = { attribution: '署名', credit: '来源', uploader: '上传者' }[c.authorSrc] || '';
+    bits.push(c.author + (tag ? '（' + tag + '）' : ''));
+  }
+  const txt = bits.join(' · ') || 'Wikimedia Commons';
+  return '<div class="credit">📷 ' + (c.page
+    ? '<a href="' + c.page + '" target="_blank" rel="noopener">' + txt + '</a>' : txt) +
+    ' <span>Wikimedia Commons</span></div>';
+}
+
+/* ---------- 拍照打卡：照片压缩后存本机 IndexedDB，不上传 ---------- */
+const PDB = 'guobao_photos_v1', PSTORE = 'photos';
+let _pdb = null, pcount = {}, purls = {};
+const PHOTO_MAX = 1400, PHOTO_Q = 0.82;   // 长边 1400px / JPEG 0.82 → 手机原图约 300KB
+
+function openPDB() {
+  if (_pdb) return _pdb;
+  _pdb = new Promise((res, rej) => {
+    if (typeof indexedDB === 'undefined') return rej(new Error('当前浏览器不支持 IndexedDB'));
+    const r = indexedDB.open(PDB, 1);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains(PSTORE)) {
+        db.createObjectStore(PSTORE, { keyPath: 'id', autoIncrement: true })
+          .createIndex('relic', 'relicId', { unique: false });
+      }
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  return _pdb;
+}
+function ptx(mode, fn) {
+  return openPDB().then(db => new Promise((res, rej) => {
+    const t = db.transaction(PSTORE, mode);
+    const req = fn(t.objectStore(PSTORE));
+    t.oncomplete = () => res(req ? req.result : undefined);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error);
+  }));
+}
+const photoAdd = (relicId, blob, w, h) =>
+  ptx('readwrite', s => s.add({ relicId, blob, w, h, t: Date.now() }));
+const photoOf = relicId =>
+  ptx('readonly', s => s.index('relic').getAll(IDBKeyRange.only(relicId)));
+const photoAll = () => ptx('readonly', s => s.getAll());
+const photoDel = id => ptx('readwrite', s => s.delete(id));
+
+// 压缩：长边压到 PHOTO_MAX，白底铺一层（避免透明 PNG 变黑）
+function compress(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, PHOTO_MAX / Math.max(img.width, img.height));
+      const cw = Math.max(1, Math.round(img.width * k));
+      const ch = Math.max(1, Math.round(img.height * k));
+      const c = document.createElement('canvas');
+      c.width = cw; c.height = ch;
+      const g = c.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, cw, ch);
+      g.drawImage(img, 0, 0, cw, ch);
+      c.toBlob(b => b ? res({ blob: b, w: cw, h: ch }) : rej(new Error('压缩失败')),
+        'image/jpeg', PHOTO_Q);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('图片无法解码')); };
+    img.src = url;
+  });
+}
+
+function markVisited(id, on) {
+  if (on) visited.add(id); else visited.delete(id);
+  save();
+  const el = document.querySelector('.item[data-id="' + id + '"]');
+  if (el) el.classList.toggle('done', visited.has(id));
+  refreshProgress();
+}
+
+function setSnapBusy(id, on) {
+  document.querySelectorAll('.snap[data-id="' + id + '"]').forEach(b => {
+    b.disabled = on;
+    if (on) { b.dataset.old = b.querySelector('.snaptx').textContent;
+              b.querySelector('.snaptx').textContent = '处理中…'; }
+  });
+}
+
+/* 渲染某件文物的照片条 + 同步按钮状态 */
+async function refreshStrip(relicId) {
+  const el = document.querySelector('.pstrip[data-id="' + relicId + '"]');
+  let list = [];
+  try { list = (await photoOf(relicId)) || []; } catch (e) { list = []; }
+  pcount[relicId] = list.length;
+
+  if (el) {
+    (purls[relicId] || []).forEach(u => URL.revokeObjectURL(u));
+    purls[relicId] = list.map(p => URL.createObjectURL(p.blob));
+    el.innerHTML = list.map((p, i) =>
+      '<div class="pthumb" data-id="' + relicId + '" data-i="' + i + '">' +
+      '<img src="' + purls[relicId][i] + '" alt="我的照片 ' + (i + 1) + '" loading="lazy">' +
+      '<button class="px" title="删除这张">×</button></div>').join('') +
+      '<button class="padd" data-id="' + relicId + '" title="再加一张">＋</button>';
+  }
+  document.querySelectorAll('.snap[data-id="' + relicId + '"]').forEach(b => {
+    b.disabled = false;
+    b.classList.toggle('has', list.length > 0);
+    const tx = b.querySelector('.snaptx');
+    if (tx) tx.textContent = list.length ? '我的照片 ' + list.length : '拍照打卡';
+  });
+  // 拍了照片就算打卡过
+  if (list.length && !visited.has(relicId)) markVisited(relicId, true);
+  if (typeof refreshPhotoWall === 'function') refreshPhotoWall();
+}
+
+/* 隐藏的 file input：手机上 capture 会直接唤起相机 */
+let pickTarget = null;
+const filePicker = (function () {
+  const i = document.createElement('input');
+  i.type = 'file';
+  i.accept = 'image/*';
+  i.multiple = true;
+  i.setAttribute('capture', 'environment');
+  i.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;opacity:0';
+  document.body.appendChild(i);
+  i.onchange = async () => {
+    const files = Array.prototype.slice.call(i.files || []);
+    i.value = '';
+    const id = pickTarget;
+    if (!files.length || id == null) return;
+    setSnapBusy(id, true);
+    let ok = 0, bad = 0;
+    for (const f of files) {
+      try { const r = await compress(f); await photoAdd(id, r.blob, r.w, r.h); ok++; }
+      catch (e) { bad++; }
+    }
+    await refreshStrip(id);
+    if (bad) alert(bad + ' 张处理失败（格式不支持或存储空间不足）');
+    if (!ok) setSnapBusy(id, false);
+  };
+  return i;
+})();
+function pickPhoto(id) { pickTarget = id; filePicker.click(); }
+
+async function removePhoto(relicId, i) {
+  const list = (await photoOf(relicId)) || [];
+  const p = list[i];
+  if (!p) return;
+  if (!confirm('删除这张照片？删了就找不回来了')) return;
+  await photoDel(p.id);
+  closeLB();
+  await refreshStrip(relicId);
+}
+
+/* ---------- 灯箱 ---------- */
+let lb = { relicId: null, i: 0, list: [], url: null };
+async function openLB(relicId, i) {
+  lb.relicId = relicId; lb.i = i;
+  lb.list = (await photoOf(relicId)) || [];
+  if (!lb.list.length) return;
+  lb.i = Math.max(0, Math.min(i, lb.list.length - 1));
+  renderLB();
+}
+function renderLB() {
+  const box = document.getElementById('lb'), p = lb.list[lb.i];
+  if (!p) return closeLB();
+  if (lb.url) URL.revokeObjectURL(lb.url);
+  lb.url = URL.createObjectURL(p.blob);
+  document.getElementById('lbimg').src = lb.url;
+  const it = ITEMS.filter(x => x.id === lb.relicId)[0];
+  document.getElementById('lbcap').textContent =
+    (it ? it.name : '') + ' · 第 ' + (lb.i + 1) + ' / ' + lb.list.length + ' 张 · ' +
+    new Date(p.t).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit' });
+  const multi = lb.list.length > 1;
+  ['lbprev', 'lbnext'].forEach(id => { document.getElementById(id).style.display = multi ? '' : 'none'; });
+  box.classList.add('open'); box.setAttribute('aria-hidden', 'false');
+}
+function closeLB() {
+  const box = document.getElementById('lb');
+  box.classList.remove('open'); box.setAttribute('aria-hidden', 'true');
+  document.getElementById('lbimg').removeAttribute('src');
+  if (lb.url) { URL.revokeObjectURL(lb.url); lb.url = null; }
+}
+
+/* ---------- 照片墙（足迹区） ---------- */
+async function refreshPhotoWall() {
+  const wall = document.getElementById('pwall'), meta = document.getElementById('pwmeta');
+  if (!wall) return;
+  // 照片库和全国页共用，这里只统计杭州这 7 件，否则会混进别的城市还数出「覆盖 5/7」这种错数
+  const mine = new Set(ITEMS.map(i => i.id));
+  let all = [];
+  try { all = (await photoAll()) || []; } catch (e) { all = []; }
+  all = all.filter(p => mine.has(p.relicId));
+  all.sort((a, b) => b.t - a.t);
+  const relics = new Set(all.map(p => p.relicId));
+  meta.textContent = all.length
+    ? all.length + ' 张照片 · 覆盖 ' + relics.size + ' / ' + TOTAL + ' 件文物 · 全部只存在本机，不会上传'
+    : '还没有照片。在下面任意一件文物上点「拍照打卡」，照片只存在你这台设备上';
+  (wall._urls || []).forEach(u => URL.revokeObjectURL(u));
+  wall._urls = all.map(p => URL.createObjectURL(p.blob));
+  wall.innerHTML = all.map((p, i) => {
+    const it = ITEMS.filter(x => x.id === p.relicId)[0];
+    return '<div class="pcell" data-id="' + p.relicId + '" data-i="' + i + '" data-wall="1">' +
+      '<img src="' + wall._urls[i] + '" alt="' + (it ? it.name : '') + '" loading="lazy">' +
+      '<span class="pcn">' + (it ? it.name : '') + '</span></div>';
+  }).join('');
+}
+
+/* 事件委托：拍照 / 删除 / 看大图 */
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (!t || !t.closest) return;
+  const snap = t.closest('.snap');
+  if (snap) { pickPhoto(+snap.dataset.id); return; }
+  const padd = t.closest('.padd');
+  if (padd) { pickPhoto(+padd.dataset.id); return; }
+  const px = t.closest('.px');
+  if (px) { e.stopPropagation(); const box = px.closest('.pthumb');
+            removePhoto(+box.dataset.id, +box.dataset.i); return; }
+  const cell = t.closest('.pcell');           // 照片墙：点开看大图
+  if (cell) { openLBFromWall(+cell.dataset.id, +cell.dataset.i); return; }
+  const th = t.closest('.pthumb');
+  if (th) { openLB(+th.dataset.id, +th.dataset.i); }
+});
+async function openLBFromWall(relicId, wallIndex) {
+  // 照片墙按时间倒序，灯箱按文物内顺序，这里按 id 定位
+  let all = [];
+  try { all = (await photoAll()) || []; } catch (e) { return; }
+  all.sort((a, b) => b.t - a.t);
+  const target = all[wallIndex];
+  if (!target) return;
+  const list = (await photoOf(relicId)) || [];
+  const idx = list.findIndex(p => p.id === target.id);
+  openLB(relicId, idx < 0 ? 0 : idx);
+}
+
+function itemHTML(it) {
+  const done = visited.has(it.id);
+  // 影像三级回退：model（3D）→ image（实物照片）→ 类别示意图
+  let thumb;
+  const cat = ' data-cat="' + it.cat + '"';
+  if (it.model) {
+    thumb = '<div class="thumb" data-3d="1"' + cat + '><model-viewer src="' + it.model + '" alt="' + it.name + '" ' +
+      'camera-controls auto-rotate rotation-per-second="22deg" ' +
+      'interaction-prompt="none" loading="lazy" reveal="auto"></model-viewer>' +
+      '<span class="tg d3">3D · 点击放大</span></div>';
+  } else if (it.image) {
+    const lic = (it.imageCredit && it.imageCredit.license) || 'Wikimedia Commons';
+    thumb = '<div class="thumb"' + cat + '><img src="' + it.image + '" alt="' + it.name + '" loading="lazy">' +
+      '<span class="tg">实物照片 · ' + lic + '</span></div>';
+  } else {
+    thumb = '<div class="thumb"' + cat + '>' + it.art + '<span class="tg">示意图</span></div>';
+  }
+  return '<div class="item' + (done ? ' done' : '') + '" data-id="' + it.id + '">' +
+    '<button class="check" title="标记已打卡">✓</button>' + thumb +
+    '<div class="ic"><div class="item-top"><h4 class="serif">' + it.name + '</h4>' +
+    '<span class="badge ' + (it.batchName === '第一批' ? 'b1' : it.batchName === '第二批' ? 'b2' : 'b3') + '">' + it.batchName + '</span></div>' +
+    '<div class="imeta"><span>⏳ ' + it.era + '</span><span>◈ ' + it.cat + '</span></div>' +
+    '<div class="tags">' + it.tags.map(t => '<span class="tag">' + t + '</span>').join('') + '</div>' +
+    '<div class="whyline"><b>为什么不能出境：</b>' + it.reason + '</div>' +
+    '<p class="story">' + it.story + '</p>' +
+    '<div class="ifoot"><button class="more">展开前世今生 ▾</button>' +
+    '<button class="snap" data-id="' + it.id + '" title="拍照 / 从相册选图，存在本机不上传">📷 <span class="snaptx">拍照打卡</span></button></div>' +
+    '<div class="pstrip" data-id="' + it.id + '"></div>' +
+    creditHTML(it) + '</div></div>';
+}
+
+document.querySelectorAll('.check').forEach(b => {
+  b.onclick = e => {
+    e.stopPropagation();
+    const el = b.closest('.item'), id = +el.dataset.id;
+    if (visited.has(id)) visited.delete(id); else visited.add(id);
+    save(); el.classList.toggle('done', visited.has(id)); refreshProgress();
+  };
+});
+document.querySelectorAll('.more').forEach(b => {
+  b.onclick = e => {
+    e.stopPropagation();
+    const it = b.closest('.item'); it.classList.toggle('open');
+    b.textContent = it.classList.contains('open') ? '收起 ▴' : '展开前世今生 ▾';
+  };
+});
+document.querySelectorAll('.wxbtn').forEach(b => {
+  b.onclick = e => {
+    e.stopPropagation();
+    const name = b.dataset.m;
+    navigator.clipboard && navigator.clipboard.writeText(name).catch(() => {});
+    const old = b.textContent;
+    b.textContent = '已复制「' + name + '」，去微信粘贴搜索';
+    setTimeout(() => b.textContent = old, 2200);
+  };
+});
+
+/* ---------- 进度 ---------- */
+const TOTAL = ITEMS.length, C = 207.3;
+function refreshProgress() {
+  const n = ITEMS.filter(i => visited.has(i.id)).length;
+  document.getElementById('ringTxt').textContent = n + '/' + TOTAL;
+  document.getElementById('ring').setAttribute('stroke-dashoffset', C * (1 - n / TOTAL));
+  document.getElementById('pbar').style.width = (n / TOTAL * 100) + '%';
+  const tip = document.getElementById('ptip');
+  if (n === 0) tip.textContent = '点卡片右下角「📷 拍照打卡」，或用右上角方框标记；记录和照片都只存在本机';
+  else if (n === TOTAL) tip.textContent = '🎉 杭州 7 件全部打卡完成——可以开一条新城市线了';
+  else tip.textContent = '已打卡 ' + n + ' 件，还剩 ' + (TOTAL - n) + ' 件';
+  document.getElementById('mprog').innerHTML = MUSEUMS.map(m => {
+    const its = ITEMS.filter(i => i.mk === m.key);
+    const d = its.filter(i => visited.has(i.id)).length;
+    return '<div class="mrow"><span class="mn" title="' + m.name + '">' + m.short + '</span>' +
+      '<span class="mb"><i style="width:' + (d / its.length * 100) + '%"></i></span>' +
+      '<span class="mv">' + d + '/' + its.length + '</span></div>';
+  }).join('');
+}
+refreshProgress();
+
+/* ---------- 启动：把照片条与照片墙读出来 ---------- */
+(async function bootPhotos() {
+  const lbx = document.getElementById('lbx');
+  if (lbx) lbx.onclick = closeLB;
+  const lbd = document.getElementById('lbd');
+  if (lbd) lbd.onclick = () => removePhoto(lb.relicId, lb.i);
+  const prev = document.getElementById('lbprev'), next = document.getElementById('lbnext');
+  if (prev) prev.onclick = () => { lb.i = (lb.i - 1 + lb.list.length) % lb.list.length; renderLB(); };
+  if (next) next.onclick = () => { lb.i = (lb.i + 1) % lb.list.length; renderLB(); };
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('lb').classList.contains('open')) return;
+    if (e.key === 'Escape') closeLB();
+    if (e.key === 'ArrowLeft' && prev) prev.click();
+    if (e.key === 'ArrowRight' && next) next.click();
+  });
+  document.getElementById('lb').addEventListener('click', e => {
+    if (e.target.id === 'lb') closeLB();       // 点遮罩关闭
+  });
+
+  // IndexedDB 不可用（隐私模式等）→ 关掉拍照入口，其余功能照常
+  try { await openPDB(); }
+  catch (err) {
+    document.querySelectorAll('.snap').forEach(b => {
+      b.disabled = true;
+      b.title = '本机不支持本地照片存储：' + err.message;
+      b.style.opacity = '.45';
+    });
+    const meta = document.getElementById('pwmeta');
+    if (meta) meta.textContent = '本机不支持本地照片存储（' + err.message + '），打卡功能不受影响';
+    return;
+  }
+  for (const it of ITEMS) await refreshStrip(it.id);
+  await refreshPhotoWall();
+})();
+
+/* ---------- 足迹分享图 ---------- */
+document.getElementById('shareBtn').onclick = () => {
+  try {
+    const n = ITEMS.filter(i => visited.has(i.id)).length;
+    // 只算杭州这 7 件的照片（照片库和全国页共用）
+    const nPhoto = ITEMS.reduce((a, i) => a + (pcount[i.id] || 0), 0);
+    const W = 840, H = 1040, c = document.createElement('canvas');
+    c.width = W; c.height = H; const g = c.getContext('2d');
+    const F = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+    const S = '"Songti SC","STSong",serif';
+    g.fillStyle = '#f5f2ec'; g.fillRect(0, 0, W, H);
+    const grd = g.createLinearGradient(0, 0, W, 340);
+    grd.addColorStop(0, '#efe6d6'); grd.addColorStop(1, '#e8ece6');
+    g.fillStyle = grd; g.fillRect(0, 0, W, 340);
+    g.textAlign = 'center';
+    g.fillStyle = '#9c3b2e'; g.font = '600 20px ' + F;
+    g.fillText('博 物 馆 探 索 主 线 · 杭 州', W / 2, 88);
+    g.fillStyle = '#221f1b'; g.font = '700 52px ' + S;
+    g.fillText('我的杭州国宝足迹', W / 2, 158);
+    g.fillStyle = '#6b645b'; g.font = '17px ' + F;
+    g.fillText(nPhoto ? '杭州 7 件禁止出国（境）展览文物 · 我的照片 ' + nPhoto + ' 张'
+                      : '杭州 7 件禁止出国（境）展览文物', W / 2, 196);
+    g.font = '700 84px ' + S; g.fillStyle = '#9c3b2e';
+    g.fillText(n, W / 2 - 30, 300);
+    g.font = '20px ' + F; g.fillStyle = '#6b645b';
+    g.fillText('/ 7 件', W / 2 + 66, 300);
+    const bx = 90, by = 340, bw = W - 180, bh = 10;
+    g.fillStyle = '#e6e0d5'; g.beginPath(); g.roundRect(bx, by, bw, bh, 5); g.fill();
+    g.fillStyle = '#9c3b2e'; g.beginPath(); g.roundRect(bx, by, Math.max(bw * n / 7, 4), bh, 5); g.fill();
+    g.textAlign = 'left';
+    g.fillStyle = '#221f1b'; g.font = '700 20px ' + S;
+    g.fillText('各馆打卡进度', 90, 420);
+    MUSEUMS.forEach((m, i) => {
+      const its = ITEMS.filter(i => i.mk === m.key);
+      const d = its.filter(i => visited.has(i.id)).length;
+      const y = 468 + i * 52;
+      g.fillStyle = '#f0ebe2'; g.beginPath(); g.roundRect(90, y - 22, W - 180, 38, 9); g.fill();
+      g.fillStyle = '#3d3730'; g.font = '16px ' + F;
+      g.fillText(m.name, 108, y + 4);
+      g.fillStyle = '#9c3b2e'; g.font = '600 16px ' + F; g.textAlign = 'right';
+      g.fillText(d + ' / ' + its.length, W - 108, y + 4); g.textAlign = 'left';
+    });
+    const doneNames = ITEMS.filter(i => visited.has(i.id)).map(i => i.name);
+    g.fillStyle = '#221f1b'; g.font = '700 20px ' + S;
+    g.fillText('已打卡的文物', 90, 660);
+    if (!doneNames.length) {
+      g.fillStyle = '#9a938a'; g.font = '16px ' + F;
+      g.fillText('还没有打卡记录 —— 从离家最近的一家博物馆开始吧', 90, 702);
+    } else {
+      doneNames.slice(0, 7).forEach((nm, i) => {
+        g.fillStyle = '#3d3730'; g.font = '16px ' + F;
+        g.fillText('· ' + (nm.length > 24 ? nm.slice(0, 24) + '…' : nm), 96, 704 + i * 34);
+      });
+    }
+    g.fillStyle = '#c9c2b7'; g.fillRect(90, H - 120, W - 180, 1);
+    g.fillStyle = '#9a938a'; g.font = '14px ' + F; g.textAlign = 'center';
+    const dt = new Date();
+    g.fillText('数据来源：国家文物局《禁止出国（境）展览文物目录》· 生成于 ' + dt.getFullYear() + '-' +
+      String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0'), W / 2, H - 80);
+    g.fillText('影像来源：Wikimedia Commons（CC 授权）· 未匹配到的为类别示意图', W / 2, H - 54);
+    const a = document.createElement('a');
+    a.download = '我的杭州国宝足迹.png'; a.href = c.toDataURL('image/png'); a.click();
+  } catch (err) { alert('生成图片失败：' + err.message); }
+};
+
+/* ---------- 影像三级回退：3D → 照片 → 类别示意图 ---------- */
+(function enableMedia() {
+  const MV_CDN = 'https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js';
+
+  // 就地降级：把缩略图区换成该文物材质类别的示意图
+  function degrade(mv) {
+    const box = mv && mv.parentNode;
+    if (!box || box.dataset.degraded) return;
+    box.dataset.degraded = '1';
+    box.innerHTML = (ART[mv.dataset.cat] || '') + '<span class="tg">示意图</span>';
+  }
+  function degradeAll() {
+    document.querySelectorAll('model-viewer').forEach(degrade);
+  }
+
+  // 照片（image 字段）加载失败也回退到示意图；用捕获阶段才能收到资源 error
+  document.addEventListener('error', e => {
+    const t = e.target;
+    if (t && t.tagName === 'IMG' && t.parentNode && t.parentNode.classList &&
+        t.parentNode.classList.contains('thumb')) {
+      const box = t.parentNode;
+      if (!box.dataset.degraded) {
+        box.dataset.degraded = '1';
+        box.innerHTML = (ART[box.dataset.cat] || '') + '<span class="tg">示意图</span>';
+      }
+    }
+  }, true);
+
+  // 没有 3D 模型时不做任何额外请求
+  if (!ITEMS.some(i => i.model)) return;
+  // 按需加载 model-viewer（约 1MB），只在确实存在 3D 数据时才拉
+  const s = document.createElement('script');
+  s.type = 'module';
+  s.src = MV_CDN;
+  s.onerror = degradeAll;                        // CDN 不可达 → 全部降级
+  document.head.appendChild(s);
+
+  const hasCE = typeof customElements !== 'undefined' && customElements.whenDefined;
+  if (hasCE) {
+    customElements.whenDefined('model-viewer').then(() => {
+      document.querySelectorAll('model-viewer').forEach(mv => {
+        mv.addEventListener('error', () => degrade(mv));   // 模型 404 / 解析失败
+        mv.addEventListener('load', () => { mv.dataset.ok = '1'; });
+      });
+      // 安全网：模型体积可能很大，给足 20 秒；仍无结果才降级
+      setTimeout(() => {
+        document.querySelectorAll('model-viewer').forEach(mv => {
+          if (!mv.dataset.ok) degrade(mv);
+        });
+      }, 20000);
+    }).catch(degradeAll);
+    // 自定义元素迟迟未注册（脚本被拦截 / 静默失败）
+    setTimeout(() => {
+      if (!customElements.get('model-viewer')) degradeAll();
+    }, 10000);
+  } else {
+    degradeAll();                               // 浏览器不支持 Custom Elements
+  }
+})();
+
+/* ---------- 3D 放大查看 ---------- */
+(function viewer3D() {
+  const box = document.getElementById('viewer');
+  const stage = document.getElementById('vstage');
+  const nameEl = document.getElementById('vname');
+  if (!box) return;
+
+  function close() {
+    box.classList.remove('open');
+    box.setAttribute('aria-hidden', 'true');
+    stage.innerHTML = '';                 // 释放 WebGL 上下文
+  }
+  function open(src, name) {
+    const mv = document.createElement('model-viewer');
+    mv.setAttribute('src', src);
+    mv.setAttribute('alt', name || '');
+    mv.setAttribute('camera-controls', '');
+    mv.setAttribute('auto-rotate', '');
+    mv.setAttribute('rotation-per-second', '18deg');
+    mv.setAttribute('touch-action', 'pan-y');
+    stage.innerHTML = '';
+    stage.appendChild(mv);
+    nameEl.textContent = name || '';
+    box.classList.add('open');
+    box.setAttribute('aria-hidden', 'false');
+  }
+
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t === box) return close();                       // 点遮罩关闭
+    const thumb = t && t.closest ? t.closest('.thumb') : null;
+    if (!thumb || thumb.dataset.degraded) return;
+    const mv = thumb.querySelector ? thumb.querySelector('model-viewer') : null;
+    if (!mv) return;
+    open(mv.getAttribute('src'), mv.getAttribute('alt'));
+  });
+  const btn = document.getElementById('vclose');
+  if (btn) btn.onclick = close;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
+
+/* ---------- 地图 ---------- */
+function focusMuseum(key) {
+  const el = document.getElementById('mk-' + key);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 1200);
+}
+
+let map = null, markers = null;
+function pinSVG(color) {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44">' +
+    '<path d="M17 43C17 43 32 25.5 32 16A15 15 0 1 0 2 16C2 25.5 17 43 17 43Z" fill="' + color + '" stroke="#fffdfa" stroke-width="2.5"/>' +
+    '<circle cx="17" cy="16" r="5.6" fill="#fffdfa"/></svg>';
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+function buildMarkers(coords) {
+  const styles = {};
+  MUSEUMS.forEach(m => {
+    styles[m.key] = new TMap.MarkerStyle({ width: 34, height: 44, anchor: { x: 17, y: 44 }, src: pinSVG(m.color) });
+  });
+  markers = new TMap.MultiMarker({
+    map: map, styles: styles,
+    geometries: MUSEUMS.map(m => ({
+      id: m.key, styleId: m.key,
+      position: new TMap.LatLng(coords[m.key][0], coords[m.key][1])
+    }))
+  });
+  markers.on('click', evt => { if (evt && evt.geometry) focusMuseum(evt.geometry.id); });
+}
+
+function locate(m) {
+  return new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (!done) { done = true; resolve(v); } };
+    setTimeout(() => finish(null), 3000);
+    try {
+      const s = new TMap.service.Search({ pageSize: 5 });
+      s.search({ keyword: m.name, boundary: 'region(杭州,0)', pageSize: 5, pageIndex: 1 })
+        .then(r => {
+          const d = r && r.data && r.data[0];
+          if (d && d.location && d.location.lat) finish([d.location.lat, d.location.lng]);
+          else finish(null);
+        })
+        .catch(() => finish(null));
+    } catch (e) { finish(null); }
+  });
+}
+
+(async function initMap() {
+  const box = document.getElementById('map');
+  const tip = document.getElementById('mapTip');
+  const MAP_DISABLED = __TMAP_DISABLED__;   // 构建时按 tmap-key.txt 是否配置好决定
+  function showTip(title, body) {
+    if (!tip) return;
+    tip.style.display = 'flex';
+    const bt = document.getElementById('tipTitle'), bd = document.getElementById('tipBody');
+    if (title && bt) bt.textContent = title;
+    if (body && bd) bd.innerHTML = body;
+  }
+  // 没配 Key 时不初始化地图。腾讯地图在无 Key 时会自己弹一个「当前产品鉴权失败」浮层，
+  // 与其让用户看到报错，不如给一块说得清楚的占位——底图反正也定位不了场馆。
+  if (MAP_DISABLED) {
+    box.innerHTML = '<div style="display:flex;height:100%;flex-direction:column;align-items:center;' +
+      'justify-content:center;gap:12px;padding:28px;text-align:center;background:#f4efe6">' +
+      '<div style="font-size:15px;color:#6b6459;font-weight:600">地图未启用</div>' +
+      '<div style="font-size:12.5px;color:#9a938a;line-height:2;max-width:470px">' +
+      '腾讯地图需要一个免费 Key（无调用次数限制）。把它填进工作区根目录的 ' +
+      '<code style="background:#eae3d8;border-radius:5px;padding:1px 6px">tmap-key.txt</code>，' +
+      '再双击 <code style="background:#eae3d8;border-radius:5px;padding:1px 6px">重新构建.command</code> 即可启用。<br>' +
+      '三家场馆的位置见下方图例，文物清单、打卡与足迹统计都不受影响。</div></div>';
+    return;
+  }
+  // 腾讯地图在 file:// 下必然鉴权失败：提前给出说明，避免用户只看到一片空白
+  if (typeof location !== 'undefined' && location.protocol === 'file:') {
+    showTip('以本地文件方式打开，地图标记可能不显示');
+  }
+  if (typeof TMap === 'undefined') {
+    showTip('地图组件未加载');
+    if (!tip) {
+      box.innerHTML = '<div style="display:flex;height:100%;align-items:center;justify-content:center;' +
+        'color:#9a938a;font-size:14px;text-align:center;padding:20px">地图组件未加载<br>（请在内置浏览器中打开以启用腾讯地图）</div>';
+    }
+    return;
+  }
+  try {
+    map = new TMap.Map('map', { zoom: 11, center: new TMap.LatLng(30.2015, 119.9443) });
+  } catch (e) {
+    showTip('地图初始化失败');
+    if (!tip) {
+      box.innerHTML = '<div style="display:flex;height:100%;align-items:center;justify-content:center;' +
+        'color:#9a938a;font-size:14px;text-align:center;padding:20px;line-height:1.9">' +
+        '地图初始化失败<br><span style="font-size:12.5px">' + (e && e.message ? e.message : '') +
+        '<br>不影响下方清单与打卡功能</span></div>';
+    }
+    return;
+  }
+  const coords = {};
+  await Promise.all(MUSEUMS.map(async m => {
+    const found = await locate(m);
+    coords[m.key] = found || m.fallback;
+    if (!found) console.warn('未能检索到，使用备用坐标:', m.name);
+  }));
+  buildMarkers(coords);
+  try {
+    const pts = Object.values(coords).map(c => new TMap.LatLng(c[0], c[1]));
+    // 用 extend 累积全部标记点；只传首尾两点会把西侧的临安博物馆挤出视野
+    const bnds = new TMap.LatLngBounds(pts[0], pts[0]);
+    for (let i = 1; i < pts.length; i++) bnds.extend(pts[i]);
+    map.fitBounds(bnds, { padding: 70 });
+  } catch (e) {
+    try {
+      const lats = Object.values(coords).map(c => c[0]), lngs = Object.values(coords).map(c => c[1]);
+      const cLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+      const cLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+      const span = Math.max(Math.max(...lats) - Math.min(...lats), (Math.max(...lngs) - Math.min(...lngs)) * 0.85);
+      map.setCenter(new TMap.LatLng(cLat, cLng));
+      map.setZoom(span > 1.2 ? 8 : span > 0.6 ? 9 : span > 0.3 ? 10 : span > 0.15 ? 11 : 12);
+    } catch (e2) { /* 保留默认视野 */ }
+  }
+})();
+</script>
+</body>
+</html>
+'''
+
+html = HTML.replace('__PAYLOAD__', payload)
+
+# 腾讯地图 key：自己起服务（不是 WorkBuddy 预览）时必须带 key，否则地图会弹「鉴权失败」。
+# 官方 Key 免费、无调用次数限制。把 key 写进这个文件即可，重新构建会自动带上：
+#   博物馆探索/tmap-key.txt
+# 也可以直接用环境变量 TMAP_KEY 覆盖。
+def _clean_key(raw):
+    """取第一行非空、非注释的内容，去掉引号"""
+    for line in (raw or '').split('\n'):
+        line = line.strip().strip('"\'')
+        if line and not line.startswith('#'):
+            return line
+    return ''
+
+TMAP_KEY = _clean_key(os.environ.get('TMAP_KEY'))
+keyfile = os.path.join(OUT, 'tmap-key.txt')
+if not TMAP_KEY and os.path.exists(keyfile):
+    with open(keyfile, encoding='utf-8') as f:
+        TMAP_KEY = _clean_key(f.read())
+
+html = html.replace('__TMAP_KEY_PARAM__', ('&key=' + TMAP_KEY) if TMAP_KEY else '')
+# 没配 Key 时不初始化地图：腾讯地图在无 Key 时会自己弹「当前产品鉴权失败」浮层，
+# 与其让用户看到报错，不如让页面显示一块说明占位（脚本仍加载，但不 new TMap.Map）。
+html = html.replace('__TMAP_DISABLED__', 'false' if TMAP_KEY else 'true')
+print('腾讯地图 key:', ('已配置 ' + TMAP_KEY[:8] + '…') if TMAP_KEY
+      else '未配置 → 地图区显示占位说明（把 Key 填进 tmap-key.txt 后重新构建即可启用）')
+
+path = os.path.join(OUT, '杭州国宝地图.html')
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(html)
+print('写出:', path, os.path.getsize(path) // 1024, 'KB')
+for m in MUSEUMS:
+    print(f"  {m['name']}: {len(m['items'])} 件  官网={m['url']}")

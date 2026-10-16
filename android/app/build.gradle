@@ -1,0 +1,10 @@
+plugins { id 'com.android.application' }
+
+android { namespace 'cn.chenjie.museumexplore'; compileSdk 35
+    defaultConfig { applicationId 'cn.chenjie.museumexplore'; minSdk 29; targetSdk 35; versionCode 2; versionName '0.2.0' }
+}
+
+dependencies {
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'com.amap.api:3dmap-location-search:latest.integration'
+}
