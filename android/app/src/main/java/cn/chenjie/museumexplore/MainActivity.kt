@@ -1,9 +1,12 @@
 package cn.chenjie.museumexplore
 
 import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -101,7 +104,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -113,23 +115,22 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import android.util.Log
 import okhttp3.OkHttpClient
-import com.amap.api.maps.AMap
-import com.amap.api.maps.CameraUpdateFactory
-import com.amap.api.maps.MapView
-import com.amap.api.maps.MapsInitializer
-import com.amap.api.maps.model.BitmapDescriptorFactory
-import com.amap.api.maps.model.LatLng
-import com.amap.api.maps.model.MarkerOptions
 import cn.chenjie.museumexplore.data.MuseumRepository
 import cn.chenjie.museumexplore.model.CitySummary
+import cn.chenjie.museumexplore.model.DatePrecision
 import cn.chenjie.museumexplore.model.MuseumInfo
+import cn.chenjie.museumexplore.model.OfficialEntry
 import cn.chenjie.museumexplore.model.Relic
+import cn.chenjie.museumexplore.model.VISIT_ORDER
+import cn.chenjie.museumexplore.model.Visit
 import cn.chenjie.museumexplore.ui.GalleryImage
 import cn.chenjie.museumexplore.ui.ImageViewerDialog
 import cn.chenjie.museumexplore.ui.MuseumTheme
 import cn.chenjie.museumexplore.ui.MuseumViewModel
 import cn.chenjie.museumexplore.ui.MuseumVisitRecordSection
+import cn.chenjie.museumexplore.ui.NextStopSection
 import cn.chenjie.museumexplore.ui.RelicImageCarousel
+import cn.chenjie.museumexplore.ui.TimelineScreen
 import cn.chenjie.museumexplore.ui.VisitRecordSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -146,7 +147,7 @@ class MainActivity : ComponentActivity() {
 
 private sealed class AppDestination(val route: String, val label: String) {
     data object Collection : AppDestination("collection", "国宝")
-    data object Map : AppDestination("map", "地图")
+    data object Map : AppDestination("map", "去哪")
     data object More : AppDestination("more", "更多")
 }
 
@@ -203,7 +204,7 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
     val swipeTabsEnabled = currentRoute == "collection" || currentRoute == "map" || currentRoute == "more"
     val activeTab = when {
         currentRoute.startsWith("map") || currentRoute.startsWith("city") || currentRoute.startsWith("museum") -> 1
-        currentRoute == "more" -> 2
+        currentRoute == "more" || currentRoute == "timeline" -> 2
         else -> 0
     }
     val destinations = listOf(AppDestination.Collection, AppDestination.Map, AppDestination.More)
@@ -247,7 +248,17 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                 popEnterTransition = { fadeIn(tween(100)) },
                 popExitTransition = { fadeOut(tween(70)) },
             ) {
-                composable("collection") { CollectionScreen(repository, revision, { navController.navigate("relic/${it.id}") }) }
+                composable("collection") {
+                    CollectionScreen(
+                        repository = repository,
+                        viewModel = viewModel,
+                        revision = revision,
+                        onRelicClick = { navController.navigate("relic/${it.id}") },
+                        onOpenMuseum = { city, museum ->
+                            navController.navigate("museum/${Uri.encode(city)}/${Uri.encode(museum)}")
+                        },
+                    )
+                }
                 composable("relic/{id}") { entry ->
                     val relic = repository.relics().firstOrNull { it.id == entry.arguments?.getString("id")?.toIntOrNull() }
                     if (relic != null) {
@@ -264,7 +275,7 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                         )
                     }
                 }
-                composable("map") { MapScreen(repository, viewModel, navController) }
+                composable("map") { MapScreen(repository, viewModel, revision, navController) }
                 composable("city/{city}") { entry ->
                     val city = Uri.decode(entry.arguments?.getString("city").orEmpty())
                     CityMuseumsScreen(repository, city, navController)
@@ -281,10 +292,25 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                         onOpenMapConsole = {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.amap.com/dev/key/app")))
                         },
+                        onTimeline = { navController.navigate("timeline") },
                         onExport = { exportLauncher.launch("museum-explore-backup.zip") },
                         onImport = { importLauncher.launch(arrayOf("application/zip")) },
                         onAbout = { aboutDialog = true },
                         onProtocol = { protocolDialog = true },
+                    )
+                }
+                composable("timeline") {
+                    TimelineScreen(
+                        repository = repository,
+                        viewModel = viewModel,
+                        state = repository.exploration(),
+                        unfiled = remember(revision) { repository.unfiledJournals() },
+                        revision = revision,
+                        onBack = { navController.popBackStack() },
+                        onOpenMuseum = { city, museum ->
+                            navController.navigate("museum/${Uri.encode(city)}/${Uri.encode(museum)}")
+                        },
+                        onOpenRelic = { relicId -> navController.navigate("relic/$relicId") },
                     )
                 }
             }
@@ -294,8 +320,8 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
     if (mapKeyDialog) MapKeyDialog(repository.mapKey(), { viewModel.saveMapKey(it); mapKeyDialog = false }, { mapKeyDialog = false }, {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.amap.com/dev/key/app")))
     })
-    if (aboutDialog) InfoDialog("博物馆探索", "195 件永禁出境文物\n本地记录版\n版本 0.5.2\n\n城市、照片、感想和收集记录默认保存在本机。地图服务需要用户自行配置高德 Key。") { aboutDialog = false }
-    if (protocolDialog) InfoDialog("隐私与协议", "本应用的打卡、照片和感想默认只保存在本机。高德地图仅在用户配置 Key 并打开地图时使用网络服务，具体数据处理以高德地图服务协议和隐私政策为准。\n\nWikimedia Commons 图片按数据中的许可信息使用。") { protocolDialog = false }
+    if (aboutDialog) InfoDialog("博迹", "195 件永禁出境文物\n本地记录版\n版本 0.6.0\n\n想去、已到访、已看到、照片、感想和参观时间线默认保存在本机。官方入口交给微信或系统浏览器打开，应用不读取你的位置。") { aboutDialog = false }
+    if (protocolDialog) InfoDialog("隐私与协议", "本应用不申请定位权限，不读取或保存位置信息。到访记录只来自你的手动确认。\n\n想去、已到访、已看到、照片、感想和时间线默认只保存在本机，不上传第三方。打开官方小程序或网站时，由微信或系统浏览器处理页面内容，适用对应服务的隐私政策。\n\nWikimedia Commons 图片按数据中的许可信息使用。") { protocolDialog = false }
 }
 
 @Composable
@@ -309,7 +335,13 @@ private fun LoadingScreen() {
 }
 
 @Composable
-private fun CollectionScreen(repository: MuseumRepository, revision: Int, onRelicClick: (Relic) -> Unit) {
+private fun CollectionScreen(
+    repository: MuseumRepository,
+    viewModel: MuseumViewModel,
+    revision: Int,
+    onRelicClick: (Relic) -> Unit,
+    onOpenMuseum: (String, String) -> Unit,
+) {
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf(CollectionFilter.All) }
     var filterMenu by remember { mutableStateOf(false) }
@@ -318,15 +350,24 @@ private fun CollectionScreen(repository: MuseumRepository, revision: Int, onReli
             val matchesQuery = query.isBlank() || relic.name.contains(query) || relic.museum.contains(query)
             val matchesFilter = when (filter) {
                 CollectionFilter.All -> true
-                CollectionFilter.Collected -> repository.isCollected(relic.id)
-                CollectionFilter.Uncollected -> !repository.isCollected(relic.id)
+                CollectionFilter.Seen -> repository.isCollected(relic.id)
+                CollectionFilter.Unseen -> !repository.isCollected(relic.id)
+                CollectionFilter.Wished -> repository.isWishedRelic(relic.id)
             }
             matchesQuery && matchesFilter
         }
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        PageHeader("THE COLLECTION · 195", "国宝总览", "把 195 件永禁出境文物，放进自己的清单里。")
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+        PageHeader("THE COLLECTION · 195", "国宝总览", "标记真正看到过的国宝，也把想看的留给下一次。")
+        NextStopSection(
+            repository = repository,
+            viewModel = viewModel,
+            revision = revision,
+            onOpenMuseum = { city, museum ->
+                onOpenMuseum(city, museum)
+            },
+        )
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(query, { query = it }, Modifier.weight(1f), placeholder = { Text("搜索国宝") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = RoundedCornerShape(16.dp))
             Spacer(Modifier.width(8.dp))
             Box {
@@ -349,17 +390,29 @@ private fun CollectionScreen(repository: MuseumRepository, revision: Int, onReli
                 }
             }
         }
-        Text("${filter.label}    ${relics.size} 件 · ${repository.collectedCount()} / 195 已收集", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(20.dp, 18.dp, 20.dp, 8.dp))
+        Text(
+            "${filter.label}    ${relics.size} 件 · ${repository.collectedCount()} / 195 已看到",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(20.dp, 18.dp, 20.dp, 8.dp),
+        )
         LazyVerticalGrid(columns = GridCells.Fixed(2), contentPadding = PaddingValues(14.dp, 0.dp, 14.dp, 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
-            items(relics, key = { it.id }) { relic -> RelicCard(relic, repository.isCollected(relic.id), onRelicClick) }
+            items(relics, key = { it.id }) { relic ->
+                RelicCard(
+                    relic = relic,
+                    collected = repository.isCollected(relic.id),
+                    wished = repository.isWishedRelic(relic.id),
+                    onClick = onRelicClick,
+                )
+            }
         }
     }
 }
 
 private enum class CollectionFilter(val label: String, val shortLabel: String) {
     All("全部国宝", "全部"),
-    Collected("已收集国宝", "已收集"),
-    Uncollected("未收集国宝", "未收集"),
+    Seen("已看到的国宝", "已看到"),
+    Unseen("还没看到的国宝", "未看到"),
+    Wished("想看的国宝", "想看"),
 }
 
 @Composable
@@ -374,11 +427,25 @@ private fun PageHeader(eyebrow: String, title: String, subtitle: String, back: (
 }
 
 @Composable
-private fun RelicCard(relic: Relic, collected: Boolean, onClick: (Relic) -> Unit) {
+private fun RelicCard(relic: Relic, collected: Boolean, wished: Boolean = false, onClick: (Relic) -> Unit) {
     Card(onClick = { onClick(relic) }, shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .55f))) {
         Column(Modifier.padding(9.dp)) {
             RelicImage(relic, Modifier.fillMaxWidth().height(112.dp))
-            Text(if (collected) "已收集" else "未收集", style = MaterialTheme.typography.labelSmall, color = if (collected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (collected) "已看到" else "未看到",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (collected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (wished) {
+                    Text(
+                        "· 想看",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
             Text(relic.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
             Text(relic.museum, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
         }
@@ -419,6 +486,7 @@ private fun RelicDetailScreen(
     onMap: () -> Unit,
 ) {
     val collected = repository.isCollected(relic.id)
+    val wished = repository.isWishedRelic(relic.id)
     val recordedPhotos = remember(revision, relic.id) { repository.photosForRelic(relic.id) }
     val primaryMuseum = remember(relic.id) { repository.primaryMuseum(relic) }
     val galleryImages = remember(relic.localImage, relic.image, recordedPhotos) {
@@ -458,16 +526,25 @@ private fun RelicDetailScreen(
         ) { Text("查看地图", color = Color.White) }
         SectionLabel("完整故事")
         Text(relic.story, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 22.dp))
-        Row(Modifier.fillMaxWidth().padding(22.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(onClick = { viewModel.setCollected(relic.id, !collected) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) { Text(if (collected) "取消收集" else "收集") }
-            Button(
+        Button(
+            onClick = { viewModel.setCollected(relic.id, !collected) },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 10.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+        ) { Text(if (collected) "取消看到" else "标记已看到", color = Color.White) }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 22.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(
+                onClick = { viewModel.setRelicWished(relic.id, !wished) },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp),
+            ) { Text(if (wished) "取消想看" else "加入想看") }
+            OutlinedButton(
                 onClick = { onOpenMuseumRecord(relic.city, primaryMuseum) },
                 enabled = primaryMuseum.isNotBlank(),
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(contentColor = Color.White),
                 contentPadding = PaddingValues(horizontal = 8.dp),
-            ) { Text("去博物馆记录", color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            ) { Text("去博物馆记录", maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
         Spacer(Modifier.height(24.dp))
     }
@@ -507,11 +584,21 @@ private fun CityMuseumsScreen(repository: MuseumRepository, city: String, navCon
 @Composable
 private fun MuseumRow(repository: MuseumRepository, city: String, museum: String, onClick: () -> Unit) {
     val visited = repository.isVisited(museum)
+    val wished = repository.isWishedMuseum(museum)
     Card(onClick = onClick, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(placeholderBrush(museum.hashCode())), contentAlignment = Alignment.Center) { Text("博", color = Color.White, style = MaterialTheme.typography.titleLarge) }
             Column(Modifier.weight(1f).padding(start = 14.dp)) { Text(museum, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("$city · ${repository.relicCount(museum)} 件永禁文物", style = MaterialTheme.typography.bodyMedium) }
-            Text(if (visited) "已去" else "待去", color = if (visited) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    if (visited) "已到访" else "未到访",
+                    color = if (visited) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                if (wished) {
+                    Text("想去", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                }
+            }
         }
     }
 }
@@ -526,12 +613,17 @@ private fun MuseumDetailScreen(
     navController: NavHostController,
 ) {
     val info = repository.museums()[museum]
+    val officialEntry = repository.officialEntry(museum)
     val relics = remember(city, museum) { repository.relicsForMuseum(city, museum) }
     val record = remember(revision, museum) { repository.museumRecord(museum) }
     val relicNames = remember(relics) { relics.associate { it.id to it.name } }
     val visited = repository.isVisited(museum)
+    val wished = repository.isWishedMuseum(museum)
+    val visits = remember(revision, museum) { repository.exploration().visitsForMuseum(museum).sortedWith(VISIT_ORDER) }
     val hero = remember(relics) { relics.firstOrNull { !it.localImage.isNullOrBlank() || !it.image.isNullOrBlank() } ?: relics.firstOrNull() }
     var showRecordSheet by rememberSaveable(museum) { mutableStateOf(false) }
+    var showVisitDateDialog by rememberSaveable(museum) { mutableStateOf(false) }
+    var confirmRemoveVisit by remember(museum) { mutableStateOf(false) }
     var viewerImage by remember { mutableStateOf<GalleryImage?>(null) }
     val heroImage = hero?.let {
         GalleryImage(it.localImage?.let { local -> "file:///android_asset/$local" } ?: it.image ?: return@let null, "官方资料图", it.name)
@@ -539,12 +631,24 @@ private fun MuseumDetailScreen(
 
     LazyColumn(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         item {
-            PageHeader("${city.uppercase(Locale.getDefault())} · VISIT", museum, "$city · ${repository.relicCount(museum)} 件永禁文物 · ${if (visited) "已去过" else "准备出发"}") { navController.popBackStack() }
+            val status = when {
+                visits.isEmpty() -> "还没到访"
+                visits.any { !it.hasExactDate } -> "已到访 · 有记录待补日期"
+                else -> "已到访 ${visits.size} 次"
+            }
+            PageHeader("${city.uppercase(Locale.getDefault())} · VISIT", museum, "$city · ${repository.relicCount(museum)} 件永禁文物 · $status") { navController.popBackStack() }
         }
         if (heroImage != null) {
             item {
                 RelicImageCarousel(listOf(heroImage), Modifier.padding(horizontal = 14.dp)) { viewerImage = it }
             }
+        }
+        item {
+            OfficialEntryCard(
+                museum = museum,
+                info = info,
+                entry = officialEntry,
+            )
         }
         item { InfoCard(info, city) }
         item { SectionLabel("关于这座博物馆") }
@@ -556,15 +660,27 @@ private fun MuseumDetailScreen(
             )
         }
         item {
-            Button(
-                onClick = { viewModel.setVisited(museum, !visited) },
-                modifier = Modifier.fillMaxWidth().padding(18.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(contentColor = Color.White),
-                contentPadding = PaddingValues(horizontal = 12.dp),
-            ) { Text(if (visited) "取消打卡" else "标记已去", color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            MuseumVisitStatusCard(
+                visited = visited,
+                visitCount = visits.size,
+                wished = wished,
+                latestLabel = visits.firstOrNull()?.let(::visitDateLabel),
+                onMarkVisit = { showVisitDateDialog = true },
+                onToggleWish = { viewModel.setMuseumWished(museum, !wished) },
+                onCancelLatestVisit = if (visits.isNotEmpty()) ({ confirmRemoveVisit = true }) else null,
+            )
         }
         item { SectionLabel("我的记录") }
+        if (visits.isEmpty()) {
+            item {
+                Text(
+                    "写感想不会自动算作到访。点上面的「标记已到访」，这次记录就会出现在时间线里。",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 22.dp),
+                )
+            }
+        }
         item {
             MuseumVisitRecordSection(
                 record = record,
@@ -599,51 +715,349 @@ private fun MuseumDetailScreen(
             onDismiss = { showRecordSheet = false },
         )
     }
+    if (showVisitDateDialog) {
+        VisitDateDialog(
+            onConfirm = { startedAt ->
+                viewModel.addVisit(museum, startedAt)
+                showVisitDateDialog = false
+            },
+            onDismiss = { showVisitDateDialog = false },
+        )
+    }
+    if (confirmRemoveVisit) {
+        AlertDialog(
+            onDismissRequest = { confirmRemoveVisit = false },
+            title = { Text("取消最近一次到访？") },
+            text = { Text("只删除最近这一次参观记录和它的照片、感想。已看到的国宝会保留。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    visits.firstOrNull()?.let { viewModel.removeVisit(it.id) }
+                    confirmRemoveVisit = false
+                }) { Text("取消这次到访") }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemoveVisit = false }) { Text("保留") } },
+        )
+    }
     ImageViewerDialog(viewerImage) { viewerImage = null }
+}
+
+private fun visitDateLabel(visit: Visit): String =
+    if (visit.hasExactDate) {
+        java.text.SimpleDateFormat("yyyy年M月d日", Locale.CHINA).format(java.util.Date(visit.startedAt!!))
+    } else {
+        "日期待补充"
+    }
+
+@Composable
+private fun MuseumVisitStatusCard(
+    visited: Boolean,
+    visitCount: Int,
+    wished: Boolean,
+    latestLabel: String?,
+    onMarkVisit: () -> Unit,
+    onToggleWish: () -> Unit,
+    onCancelLatestVisit: (() -> Unit)?,
+) {
+    Card(
+        Modifier.fillMaxWidth().padding(18.dp, 14.dp, 18.dp, 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(18.dp),
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Text(
+                when {
+                    visitCount == 0 -> "还没到访"
+                    visitCount == 1 -> "已到访 1 次${latestLabel?.let { " · $it" } ?: ""}"
+                    else -> "已到访 $visitCount 次 · 最近 $latestLabel"
+                },
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                "到访由你自己确认，不使用定位打卡。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Button(
+                onClick = onMarkVisit,
+                modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+            ) { Text(if (visited) "再记一次参观" else "标记已到访", color = Color.White) }
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onToggleWish, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) {
+                    Text(if (wished) "取消想去" else "加入想去")
+                }
+                if (onCancelLatestVisit != null) {
+                    OutlinedButton(onClick = onCancelLatestVisit, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) {
+                        Text("取消最近到访", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 手动到访的日期选择：默认今天，可改成过去的日期，也可以明确「日期记不清了」。 */
+@Composable
+private fun VisitDateDialog(onConfirm: (Long?) -> Unit, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("这次是什么时候去的？") },
+        text = {
+            Column {
+                Text("默认是今天；补录过去的参观请选择日期。", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "不确定日期就先记为「日期待补充」，之后可以在时间线里补录。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(System.currentTimeMillis()) }) { Text("就是今天") }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { onConfirm(null) }) { Text("日期记不清了") }
+                TextButton(onClick = {
+                    val calendar = java.util.Calendar.getInstance()
+                    android.app.DatePickerDialog(
+                        context,
+                        { _, year, month, day ->
+                            val picked = java.util.Calendar.getInstance().apply {
+                                set(year, month, day, 12, 0, 0)
+                                set(java.util.Calendar.MILLISECOND, 0)
+                            }
+                            onConfirm(picked.timeInMillis)
+                        },
+                        calendar.get(java.util.Calendar.YEAR),
+                        calendar.get(java.util.Calendar.MONTH),
+                        calendar.get(java.util.Calendar.DAY_OF_MONTH),
+                    ).apply {
+                        datePicker.maxDate = System.currentTimeMillis()
+                    }.show()
+                }) { Text("选择日期") }
+            }
+        },
+    )
+}
+
+@Composable
+private fun OfficialEntryCard(museum: String, info: MuseumInfo?, entry: OfficialEntry?) {
+    val context = LocalContext.current
+    var showAlternatives by remember(museum) { mutableStateOf(false) }
+    val wechatAvailable = remember(context) {
+        val candidates = listOf("com.tencent.mm", "com.tencent.mm.huawei")
+        candidates.any { packageName ->
+            runCatching { context.packageManager.getPackageInfo(packageName, 0) }.isSuccess
+        }
+    }
+
+    fun openUrl(url: String?, failure: String) {
+        if (url.isNullOrBlank()) {
+            Toast.makeText(context, failure, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(intent) }.onFailure {
+            Toast.makeText(context, "没有可打开该页面的应用", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun copySearchName() {
+        val name = entry?.wechatSearchName?.takeIf { it.isNotBlank() }
+            ?: entry?.appName?.takeIf { it.isNotBlank() }
+            ?: info?.miniProgram?.takeIf { it.isNotBlank() }
+            ?: museum
+        val clipboard = context.getSystemService(ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(ClipData.newPlainText("博物馆官方名称", name))
+        Toast.makeText(context, "已复制「$name」，去微信搜索", Toast.LENGTH_LONG).show()
+    }
+
+    Card(
+        Modifier.fillMaxWidth().padding(14.dp, 10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(18.dp),
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Text("官方入口", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                when {
+                    entry?.landingUrl != null -> entry.appName
+                    info?.officialUrl != null -> "$museum · 官方网站"
+                    else -> museum
+                },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 7.dp),
+            )
+            if (entry?.verifiedAt?.isNotBlank() == true) {
+                Text(
+                    "已核验 ${entry.verifiedAt}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            val landingUrl = entry?.landingUrl
+            val reservationUrl = entry?.reservationUrl
+            val officialUrl = entry?.officialUrl ?: info?.officialUrl
+            when {
+                landingUrl != null -> {
+                    Button(
+                        onClick = {
+                            if (wechatAvailable) openUrl(landingUrl, "无法打开微信小程序")
+                            else {
+                                Toast.makeText(context, "未安装微信，已为你保留官网入口", Toast.LENGTH_LONG).show()
+                                showAlternatives = true
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                    ) { Text("打开官方小程序", color = Color.White) }
+                    Text(
+                        if (wechatAvailable) "将打开微信小程序，可能需要确认跳转" else "本机未检测到微信，可改用预约或官网",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+                reservationUrl != null -> {
+                    Button(
+                        onClick = { openUrl(reservationUrl, "暂无官方预约链接") },
+                        modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                    ) { Text("立即预约", color = Color.White) }
+                }
+                officialUrl != null -> {
+                    Button(
+                        onClick = { openUrl(officialUrl, "暂无官方网站") },
+                        modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                    ) { Text("打开官方网站", color = Color.White) }
+                }
+                else -> {
+                    Text(
+                        info?.miniProgram?.let { "暂未接入可稳定直达的小程序。可以在微信里搜索官方名称「$it」。" }
+                            ?: "暂未找到可稳定直接打开的官方入口，可以先复制馆名去微信搜索。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 7.dp),
+                    )
+                    OutlinedButton(
+                        onClick = { copySearchName() },
+                        modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+                        shape = RoundedCornerShape(14.dp),
+                    ) { Text("复制官方名称去微信搜索") }
+                }
+            }
+            if (landingUrl != null) {
+                Text(
+                    "找不到小程序时，可改用官网或复制名称搜索。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+
+            if (reservationUrl != null || officialUrl != null) {
+                TextButton(onClick = { showAlternatives = !showAlternatives }, modifier = Modifier.padding(top = 4.dp)) {
+                    Text(if (showAlternatives) "收起其他入口" else "其他官方入口")
+                }
+            }
+            if (showAlternatives) {
+                if (landingUrl == null) reservationUrl?.let { url ->
+                    OutlinedButton(
+                        onClick = { openUrl(url, "暂无官方预约链接") },
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                        shape = RoundedCornerShape(14.dp),
+                    ) { Text("打开官方预约页") }
+                }
+                if (landingUrl == null || reservationUrl == null) officialUrl?.let { url ->
+                    OutlinedButton(
+                        onClick = { openUrl(url, "暂无官方网站") },
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                        shape = RoundedCornerShape(14.dp),
+                    ) { Text("打开官方网站") }
+                }
+                TextButton(onClick = { copySearchName() }, modifier = Modifier.fillMaxWidth()) {
+                    Text("复制官方名称去微信搜索")
+                }
+            }
+        }
+    }
 }
 
 @Composable
 private fun InfoCard(info: MuseumInfo?, city: String) {
     Card(Modifier.fillMaxWidth().padding(14.dp, 10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("时间   ${info?.openingHours ?: "每天 9:00—17:00 · 以馆方公告为准"}")
+            Text("时间   ${info?.openingHours ?: "待官方确认"}")
             Text("地址   ${info?.address ?: "$city · 具体地址待补充"}")
-            Text("预约   ${info?.reservation ?: "以馆方当日公告为准"}")
-            info?.miniProgram?.let { Text("小程序   $it") }
-            info?.wikiUrl?.let { Text("资料   Wikipedia") }
+            Text("预约   ${info?.reservation ?: "待官方确认"}")
         }
     }
 }
 
 @Composable
-private fun MapScreen(repository: MuseumRepository, viewModel: MuseumViewModel, navController: NavHostController) {
-    var selectedCity by rememberSaveable { mutableStateOf("") }
-    val key = repository.mapKey()
+private fun MapScreen(
+    repository: MuseumRepository,
+    viewModel: MuseumViewModel,
+    revision: Int,
+    navController: NavHostController,
+) {
+    val selectedCity = remember(revision) { repository.selectedCity() }
+    val cities = remember(revision) { repository.cities() }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        PageHeader("EXPLORE / MAP", "去哪里看国宝", if (selectedCity.isEmpty()) "绿色是走过的地方，朱砂色是下一站。" else "$selectedCity · 博物馆地图")
-        if (key.isBlank()) {
-            Card(Modifier.fillMaxWidth().padding(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(18.dp)) {
-                Column(Modifier.padding(18.dp)) {
-                    Text("地图需要高德 Android Key", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Key 只保存在本机，不会上传。请到“更多”里申请和保存。", modifier = Modifier.padding(top = 8.dp))
-                    Button(
-                        onClick = { navController.navigate("more") },
-                        modifier = Modifier.padding(top = 12.dp),
-                        colors = ButtonDefaults.buttonColors(contentColor = Color.White),
-                    ) { Text("去更多设置", color = Color.White) }
+        PageHeader(
+            "EXPLORE / NEXT STOP",
+            "今天去哪",
+            "先选城市，再决定下一站。不读取你的位置，也不显示距离。",
+        )
+        LazyColumn(contentPadding = PaddingValues(0.dp, 0.dp, 0.dp, 24.dp)) {
+            item {
+                NextStopSection(
+                    repository = repository,
+                    viewModel = viewModel,
+                    revision = revision,
+                    onOpenMuseum = { city, museum ->
+                        navController.navigate("museum/${Uri.encode(city)}/${Uri.encode(museum)}")
+                    },
+                )
+            }
+            item {
+                SectionLabel(if (selectedCity.isBlank()) "按城市浏览" else "$selectedCity · 博物馆")
+            }
+            if (selectedCity.isBlank()) {
+                item {
+                    Text(
+                        "选好城市后，这里会列出该城市的博物馆；也可以直接看上面的推荐。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 22.dp),
+                    )
                 }
-            }
-        } else {
-            AmapView(repository, selectedCity, key, Modifier.fillMaxWidth().height(280.dp))
-        }
-        if (selectedCity.isEmpty()) {
-            LazyColumn(contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(repository.cities(), key = { it.name }) { city -> CityMapCard(city) { selectedCity = city.name } }
-            }
-        } else {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = { selectedCity = "" }) { Text("‹ 返回城市") }; Text(selectedCity, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-            LazyColumn(contentPadding = PaddingValues(16.dp, 0.dp, 16.dp, 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(repository.museumNames(selectedCity)) { museum -> MuseumRow(repository, selectedCity, museum) { navController.navigate("museum/${Uri.encode(selectedCity)}/${Uri.encode(museum)}") } }
+                items(cities, key = { it.name }) { city ->
+                    Box(Modifier.padding(horizontal = 16.dp, vertical = 5.dp)) {
+                        CityMapCard(city) {
+                            repository.saveSelectedCity(city.name)
+                            viewModel.refresh()
+                        }
+                    }
+                }
+            } else {
+                items(repository.museumNames(selectedCity)) { museum ->
+                    Box(Modifier.padding(horizontal = 16.dp, vertical = 5.dp)) {
+                        MuseumRow(repository, selectedCity, museum) {
+                            navController.navigate("museum/${Uri.encode(selectedCity)}/${Uri.encode(museum)}")
+                        }
+                    }
+                }
             }
         }
     }
@@ -661,42 +1075,27 @@ private fun CityMapCard(city: CitySummary, onClick: () -> Unit) {
 }
 
 @Composable
-private fun AmapView(repository: MuseumRepository, city: String, key: String, modifier: Modifier) {
-    AndroidView(factory = { context ->
-        MapsInitializer.updatePrivacyShow(context, true, true)
-        MapsInitializer.updatePrivacyAgree(context, true)
-        MapsInitializer.setApiKey(key)
-        MapView(context).also { mapView ->
-            mapView.onCreate(null)
-            mapView.onResume()
-            val map = mapView.map
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(mapCenter(city), if (city.isBlank()) 4.3f else 11.2f))
-            addMuseumMarkers(map, repository, city)
-        }
-    }, modifier = modifier.clip(RoundedCornerShape(18.dp)), update = {}, onRelease = { mapView ->
-        mapView.onPause()
-        mapView.onDestroy()
-    })
-}
-
-private fun addMuseumMarkers(map: AMap, repository: MuseumRepository, city: String) {
-    val coords = mapOf("北京" to LatLng(39.9042, 116.4074), "西安" to LatLng(34.3416, 108.9398), "上海" to LatLng(31.2304, 121.4737), "杭州" to LatLng(30.2741, 120.1551), "武汉" to LatLng(30.5928, 114.3055), "长沙" to LatLng(28.2282, 112.9388), "成都" to LatLng(30.5728, 104.0668), "沈阳" to LatLng(41.8057, 123.4315))
-    coords.filter { city.isBlank() || it.key == city }.forEach { (name, center) -> repository.museumNames(name).forEachIndexed { index, museum -> map.addMarker(MarkerOptions().position(LatLng(center.latitude + index * .035, center.longitude + index * .045)).title(museum).snippet("${repository.relicCount(museum)} 件永禁文物").icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_museum_pin))) } }
-}
-
-private fun mapCenter(city: String): LatLng = mapOf("北京" to LatLng(39.9042, 116.4074), "上海" to LatLng(31.2304, 121.4737), "杭州" to LatLng(30.2741, 120.1551), "西安" to LatLng(34.3416, 108.9398), "武汉" to LatLng(30.5928, 114.3055), "长沙" to LatLng(28.2282, 112.9388), "成都" to LatLng(30.5728, 104.0668), "沈阳" to LatLng(41.8057, 123.4315))[city] ?: LatLng(35.86, 104.2)
-
-@Composable
-private fun MoreScreen(repository: MuseumRepository, onMapKey: () -> Unit, onOpenMapConsole: () -> Unit, onExport: () -> Unit, onImport: () -> Unit, onAbout: () -> Unit, onProtocol: () -> Unit) {
+private fun MoreScreen(
+    repository: MuseumRepository,
+    onMapKey: () -> Unit,
+    onOpenMapConsole: () -> Unit,
+    onTimeline: () -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
+    onAbout: () -> Unit,
+    onProtocol: () -> Unit,
+) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).background(MaterialTheme.colorScheme.background)) {
         PageHeader("MUSEUM EXPLORER · 01", "更多", "保持简单，所有设置都在本机。")
+        SectionLabel("我的足迹")
+        SettingsRow("我的参观", "时间线、年度足迹和待整理记录", Icons.Outlined.CalendarMonth, onTimeline)
         SectionLabel("地图与数据")
         SettingsRow("地图服务", "${if (repository.mapKey().isBlank()) "设置" else "已设置"}高德地图 Key", Icons.Outlined.Settings, onMapKey)
         TextButton(onClick = onOpenMapConsole, modifier = Modifier.padding(horizontal = 18.dp)) { Text("去高德控制台申请 Key  ↗") }
-        SettingsRow("导出备份", "保存照片、打卡和感想", Icons.Outlined.UploadFile, onExport)
+        SettingsRow("导出备份", "保存状态、时间线、照片和感想", Icons.Outlined.UploadFile, onExport)
         SettingsRow("导入备份", "从 ZIP 恢复本机记录", Icons.Outlined.CollectionsBookmark, onImport)
         SectionLabel("关于")
-        SettingsRow("关于与更新", "版本 0.5.2 · 检查更新", Icons.Outlined.Info, onAbout)
+        SettingsRow("关于与更新", "版本 0.6.0 · 检查更新", Icons.Outlined.Info, onAbout)
         SettingsRow("隐私与协议", "本地存储说明、第三方服务协议", Icons.Outlined.Policy, onProtocol)
         Spacer(Modifier.height(20.dp))
     }

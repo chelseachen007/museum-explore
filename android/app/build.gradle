@@ -8,8 +8,8 @@ android { namespace 'cn.chenjie.museumexplore'; compileSdk 35
         applicationId 'cn.chenjie.museumexplore'
         minSdk 29
         targetSdk 35
-        versionCode 7
-        versionName '0.5.2'
+        versionCode 8
+        versionName '0.6.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     buildFeatures { compose true }
@@ -36,6 +36,7 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
     implementation 'io.coil-kt:coil-compose:2.7.0'
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
     androidTestImplementation platform('androidx.compose:compose-bom:2024.09.03')
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
@@ -44,5 +45,4 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
     implementation 'com.google.android.material:material:1.12.0'
-    implementation 'com.amap.api:3dmap-location-search:latest.integration'
 }

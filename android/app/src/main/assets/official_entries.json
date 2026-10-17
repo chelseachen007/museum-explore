@@ -1,0 +1,537 @@
+{
+  "meta": {
+    "verifiedAt": "2026-10-17",
+    "description": "博物馆官方入口台账。保留现有字段名；仅对已核验可一键唤起的小程序记录 landingUrl，其余馆使用官网、官方预约页或正式名称微信搜索兜底。"
+  },
+  "museums": [
+    {
+      "museum": "故宫博物院",
+      "appName": "故宫博物院",
+      "wechatSearchName": "故宫博物院",
+      "appId": "wx13169e68a3e63e55",
+      "landingUrl": "https://mp.weixin.qq.com/miniprogram/landing_page/YBIjracF-gK9t-1wtvy0zobY/zh_CN",
+      "schemeUrl": "weixin://dl/business/?t=XDnlO9pT4af",
+      "sourceUrl": "https://www.dpm.org.cn/",
+      "officialUrl": "https://www.dpm.org.cn/",
+      "reservationUrl": "https://ticket.dpm.org.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "中国国家博物馆",
+      "appName": "国家博物馆",
+      "wechatSearchName": "国家博物馆",
+      "appId": "wx9e2927dd595b0473",
+      "landingUrl": "https://mp.weixin.qq.com/miniprogram/landing_page/YBIr-6QK8VDv67l65qi3n4Te/zh_CN",
+      "schemeUrl": "weixin://dl/business/?t=iKWaZMyfzuj",
+      "sourceUrl": "https://www.chnmuseum.cn/",
+      "officialUrl": "https://www.chnmuseum.cn/",
+      "reservationUrl": "https://pcticket.chnmuseum.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "湖南博物院",
+      "appName": "湖南省博物馆",
+      "wechatSearchName": "湖南省博物馆",
+      "appId": "wx72eb4120b05cc845",
+      "landingUrl": "https://mp.weixin.qq.com/miniprogram/landing_page/YBIlrPNR91a5v-5z5qnkk4fY/zh_CN",
+      "schemeUrl": "weixin://dl/business/?t=QostqY733Do",
+      "sourceUrl": "https://www.hnmuseum.com/",
+      "officialUrl": "https://www.hnmuseum.com/",
+      "reservationUrl": "https://pcticket.hnmuseum.com/museum/#/home",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "湖北省博物馆",
+      "appName": "湖北省博物馆网上预约系统",
+      "wechatSearchName": "湖北省博物馆网上预约系统",
+      "appId": "wx3d531ec001c6d864",
+      "landingUrl": "https://mp.weixin.qq.com/miniprogram/landing_page/YBIh-qMA8gLov7xysPzjk4XZ/zh_CN",
+      "schemeUrl": "weixin://dl/business/?t=q3q71by4auo",
+      "sourceUrl": "https://www.hbww.org.cn/",
+      "officialUrl": "https://www.hbww.org.cn/",
+      "reservationUrl": "https://pcticket.hbww.org.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "上海博物馆",
+      "appName": "上海博物馆参观预约",
+      "wechatSearchName": "上海博物馆参观预约",
+      "appId": "wxa0a7f2b3bf67edcc",
+      "landingUrl": "https://mp.weixin.qq.com/miniprogram/landing_page/YBJzrvcEpVXpvO4l5f3iz9CO/zh_CN",
+      "schemeUrl": "weixin://dl/business/?t=odDnvFTPUKf",
+      "sourceUrl": "https://www.shanghaimuseum.net/",
+      "officialUrl": "https://www.shanghaimuseum.net/",
+      "reservationUrl": "https://reservation.shanghaimuseum.net/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "三星堆博物馆",
+      "appName": "三星堆博物馆",
+      "wechatSearchName": "三星堆博物馆",
+      "appId": "wx034c1d52fef73071",
+      "landingUrl": "https://mp.weixin.qq.com/miniprogram/landing_page/YBIiraJQ8gO-veomtf20m4Tc/zh_CN",
+      "schemeUrl": "weixin://dl/business/?t=O64Gnif054d",
+      "sourceUrl": "https://www.sxd.cn/",
+      "officialUrl": "https://www.sxd.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "南京博物院",
+      "appName": "南京博物院",
+      "wechatSearchName": "南京博物院",
+      "appId": "wx6e063f3c2759c7af",
+      "landingUrl": "https://mp.weixin.qq.com/miniprogram/landing_page/YBIk-6YF8AG47L505vPknNKL/zh_CN",
+      "schemeUrl": "weixin://dl/business/?t=oe3rvT8A5Wp",
+      "sourceUrl": "https://www.njmuseum.com/",
+      "officialUrl": "https://www.njmuseum.com/",
+      "reservationUrl": "https://www.njmuseum.com/visitIndex",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "苏州博物馆",
+      "appName": "苏州博物馆全预约",
+      "wechatSearchName": "苏州博物馆全预约",
+      "appId": "wxfef80ee1ab7e58a2",
+      "landingUrl": "https://mp.weixin.qq.com/miniprogram/landing_page/YBJ0-_AL8wLuvu0h5K-yk9Lf/zh_CN",
+      "schemeUrl": "weixin://dl/business/?t=hV6DTVFh7To",
+      "sourceUrl": "https://www.szmuseum.com/",
+      "officialUrl": "https://www.szmuseum.com/",
+      "reservationUrl": "https://www.szmuseum.com/Other/ReservationTip",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "中国国家图书馆",
+      "appName": "中国国家图书馆",
+      "wechatSearchName": "中国国家图书馆",
+      "sourceUrl": "https://www.nlc.cn/",
+      "officialUrl": "https://www.nlc.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "首都博物馆",
+      "appName": "首都博物馆",
+      "wechatSearchName": "首都博物馆",
+      "sourceUrl": "https://www.capitalmuseum.org.cn/",
+      "officialUrl": "https://www.capitalmuseum.org.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "吉林省博物院",
+      "appName": "吉林省博物院",
+      "wechatSearchName": "吉林省博物院",
+      "sourceUrl": "https://jlmuseum.net/",
+      "officialUrl": "https://jlmuseum.net/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "云南省博物馆",
+      "appName": "云南省博物馆",
+      "wechatSearchName": "云南省博物馆",
+      "sourceUrl": "https://www.ynbwg.cn/",
+      "officialUrl": "https://www.ynbwg.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "stale"
+    },
+    {
+      "museum": "成都金沙遗址博物馆",
+      "appName": "成都金沙遗址博物馆",
+      "wechatSearchName": "成都金沙遗址博物馆",
+      "reservationUrl": "https://www.jinshasitemuseum.com/node/277",
+      "sourceUrl": "https://www.jinshasitemuseum.com/",
+      "officialUrl": "https://www.jinshasitemuseum.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "绵阳市博物馆",
+      "appName": "绵阳市博物馆",
+      "wechatSearchName": "绵阳市博物馆",
+      "sourceUrl": "https://museum.mianyang.cn/",
+      "officialUrl": "https://museum.mianyang.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "天津博物馆",
+      "appName": "天津博物馆",
+      "wechatSearchName": "天津博物馆",
+      "sourceUrl": "https://www.tjbwg.cn/",
+      "officialUrl": "https://www.tjbwg.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "宁夏博物馆",
+      "appName": "宁夏博物馆",
+      "wechatSearchName": "宁夏博物馆",
+      "sourceUrl": "https://www.nxbwg.com/",
+      "officialUrl": "https://www.nxbwg.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "安徽博物院",
+      "appName": "安徽博物院",
+      "wechatSearchName": "安徽博物院",
+      "sourceUrl": "https://www.ahm.cn/",
+      "officialUrl": "https://www.ahm.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "马鞍山市博物馆",
+      "appName": "马鞍山市博物馆",
+      "wechatSearchName": "马鞍山市博物馆",
+      "verifiedAt": "2026-10-17",
+      "status": "stale"
+    },
+    {
+      "museum": "山东博物馆",
+      "appName": "山东博物馆",
+      "wechatSearchName": "山东博物馆",
+      "sourceUrl": "https://www.sdmuseum.com/",
+      "officialUrl": "https://www.sdmuseum.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "淄博市博物馆",
+      "appName": "淄博市博物馆",
+      "wechatSearchName": "淄博市博物馆",
+      "sourceUrl": "https://www.zbsbwg.com/",
+      "officialUrl": "https://www.zbsbwg.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "大同市博物馆",
+      "appName": "大同市博物馆",
+      "wechatSearchName": "大同市博物馆",
+      "verifiedAt": "2026-10-17",
+      "status": "stale"
+    },
+    {
+      "museum": "山西博物院",
+      "appName": "山西博物院",
+      "wechatSearchName": "山西博物院",
+      "sourceUrl": "https://www.shanximuseum.com/",
+      "officialUrl": "https://www.shanximuseum.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "南越王博物院",
+      "appName": "南越王博物院",
+      "wechatSearchName": "南越王博物院",
+      "verifiedAt": "2026-10-17",
+      "status": "stale",
+      "officialUrl": "https://www.nywmuseum.org.cn/",
+      "sourceUrl": "https://www.nywmuseum.org.cn/"
+    },
+    {
+      "museum": "新疆维吾尔自治区博物馆",
+      "appName": "新疆维吾尔自治区博物馆",
+      "wechatSearchName": "新疆维吾尔自治区博物馆",
+      "reservationUrl": "https://xjbwgpw.xjmuseum.com.cn/",
+      "sourceUrl": "https://xjbwgpw.xjmuseum.com.cn/",
+      "officialUrl": "https://xjbwgpw.xjmuseum.com.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "南京大学",
+      "appName": "南京大学",
+      "wechatSearchName": "南京大学",
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable"
+    },
+    {
+      "museum": "南京市博物总馆",
+      "appName": "南京市博物总馆",
+      "wechatSearchName": "南京市博物总馆",
+      "sourceUrl": "https://www.njmuseumadmin.com/",
+      "officialUrl": "https://www.njmuseumadmin.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "扬州博物馆",
+      "appName": "扬州博物馆",
+      "wechatSearchName": "扬州博物馆",
+      "sourceUrl": "https://www.yzmuseum.com/",
+      "officialUrl": "https://www.yzmuseum.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "镇江博物馆",
+      "appName": "镇江博物馆",
+      "wechatSearchName": "镇江博物馆",
+      "sourceUrl": "https://www.zjmuseum.com.cn/",
+      "officialUrl": "https://www.zjmuseum.com.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "stale"
+    },
+    {
+      "museum": "江西省博物馆",
+      "appName": "江西省博物馆",
+      "wechatSearchName": "江西省博物馆",
+      "sourceUrl": "https://www.jxmuseum.cn/",
+      "officialUrl": "https://www.jxmuseum.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "定州市博物馆",
+      "appName": "定州市博物馆",
+      "wechatSearchName": "定州市博物馆",
+      "verifiedAt": "2026-10-17",
+      "status": "stale"
+    },
+    {
+      "museum": "河北博物院",
+      "appName": "河北博物院",
+      "wechatSearchName": "河北博物院",
+      "sourceUrl": "https://www.hebeimuseum.org.cn/",
+      "officialUrl": "https://www.hebeimuseum.org.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "河南博物院",
+      "appName": "河南博物院",
+      "wechatSearchName": "河南博物院",
+      "sourceUrl": "https://www.chnmus.net/",
+      "officialUrl": "https://www.chnmus.net/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "洛阳博物馆",
+      "appName": "洛阳博物馆",
+      "wechatSearchName": "洛阳博物馆",
+      "sourceUrl": "https://www.lymuseum.com/",
+      "officialUrl": "https://www.lymuseum.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "杭州博物馆",
+      "appName": "杭州博物馆",
+      "wechatSearchName": "杭州博物馆",
+      "sourceUrl": "https://hz-museum.cn/",
+      "officialUrl": "https://hz-museum.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "杭州市临安区博物馆",
+      "appName": "杭州市临安区博物馆",
+      "wechatSearchName": "杭州市临安区博物馆",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "浙江省博物馆",
+      "appName": "浙江省博物馆",
+      "wechatSearchName": "浙江省博物馆",
+      "sourceUrl": "https://www.zjmuseum.com.cn/cn/",
+      "officialUrl": "https://www.zjmuseum.com.cn/cn/",
+      "reservationUrl": "https://zjpc.zjmuseum.com.cn/museum/#/team/home",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "荆门市博物馆",
+      "appName": "荆门市博物馆",
+      "wechatSearchName": "荆门市博物馆",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "敦煌研究院",
+      "appName": "敦煌研究院",
+      "wechatSearchName": "敦煌研究院",
+      "sourceUrl": "https://www.dha.ac.cn/",
+      "officialUrl": "https://www.dha.ac.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "甘肃省博物馆",
+      "appName": "甘肃省博物馆",
+      "wechatSearchName": "甘肃省博物馆",
+      "sourceUrl": "https://www.gansumuseum.com/",
+      "officialUrl": "https://www.gansumuseum.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "西藏博物馆",
+      "appName": "西藏博物馆",
+      "wechatSearchName": "西藏博物馆",
+      "sourceUrl": "https://www.tibetmuseum.com.cn/pc",
+      "officialUrl": "https://www.tibetmuseum.com.cn/pc",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "贵州省博物馆",
+      "appName": "贵州省博物馆",
+      "wechatSearchName": "贵州省博物馆",
+      "sourceUrl": "https://www.gzmuseum.com/",
+      "officialUrl": "https://www.gzmuseum.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "辽宁省博物馆",
+      "appName": "辽宁省博物馆",
+      "wechatSearchName": "辽宁省博物馆",
+      "sourceUrl": "https://www.lnmuseum.com.cn/",
+      "officialUrl": "https://www.lnmuseum.com.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "周原博物馆",
+      "appName": "周原博物馆",
+      "wechatSearchName": "周原博物馆",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "宝鸡青铜器博物院",
+      "appName": "宝鸡青铜器博物院",
+      "wechatSearchName": "宝鸡青铜器博物院",
+      "sourceUrl": "https://www.bjqtm.com/",
+      "officialUrl": "https://www.bjqtm.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "法门寺博物馆",
+      "appName": "法门寺博物馆",
+      "wechatSearchName": "法门寺博物馆",
+      "verifiedAt": "2026-10-17",
+      "status": "stale"
+    },
+    {
+      "museum": "淳化县博物馆",
+      "appName": "淳化县博物馆",
+      "wechatSearchName": "淳化县博物馆",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "秦始皇帝陵博物院",
+      "appName": "秦始皇帝陵博物院",
+      "wechatSearchName": "秦始皇帝陵博物院",
+      "sourceUrl": "https://www.bmy.com.cn/",
+      "officialUrl": "https://www.bmy.com.cn/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "茂陵博物馆",
+      "appName": "茂陵博物馆",
+      "wechatSearchName": "茂陵博物馆",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "西安博物院",
+      "appName": "西安博物院",
+      "wechatSearchName": "西安博物院",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "西安碑林博物馆",
+      "appName": "西安碑林博物馆",
+      "wechatSearchName": "西安碑林博物馆",
+      "sourceUrl": "https://www.beilin-museum.com/",
+      "officialUrl": "https://www.beilin-museum.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "陕西历史博物馆",
+      "appName": "陕西历史博物馆",
+      "wechatSearchName": "陕西历史博物馆",
+      "sourceUrl": "https://www.sxhm.com/",
+      "officialUrl": "https://www.sxhm.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "青海省博物馆",
+      "appName": "青海省博物馆",
+      "wechatSearchName": "青海省博物馆",
+      "sourceUrl": "https://www.qhmuseum.com/",
+      "officialUrl": "https://www.qhmuseum.com/",
+      "verifiedAt": "2026-10-17",
+      "status": "verified"
+    },
+    {
+      "museum": "中国社会科学院考古研究所",
+      "appName": "中国社会科学院考古研究所",
+      "wechatSearchName": "中国社会科学院考古研究所",
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable"
+    },
+    {
+      "museum": "清华大学",
+      "appName": "清华大学",
+      "wechatSearchName": "清华大学",
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable"
+    },
+    {
+      "museum": "湖南大学",
+      "appName": "湖南大学",
+      "wechatSearchName": "湖南大学",
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable"
+    },
+    {
+      "museum": "安徽省文物考古研究所",
+      "appName": "安徽省文物考古研究所",
+      "wechatSearchName": "安徽省文物考古研究所",
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable"
+    },
+    {
+      "museum": "山东省文物考古研究院",
+      "appName": "山东省文物考古研究院",
+      "wechatSearchName": "山东省文物考古研究院",
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable"
+    },
+    {
+      "museum": "辽宁省文物考古研究院",
+      "appName": "辽宁省文物考古研究院",
+      "wechatSearchName": "辽宁省文物考古研究院",
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable"
+    },
+    {
+      "museum": "新疆维吾尔自治区文物考古研究所",
+      "appName": "新疆维吾尔自治区文物考古研究所",
+      "wechatSearchName": "新疆维吾尔自治区文物考古研究所",
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable"
+    }
+  ]
+}

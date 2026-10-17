@@ -36,9 +36,30 @@ data class MuseumInfo(
     val address: String?,
     val intro: String?,
     val openingHours: String?,
+    val closedDays: String? = null,
     val reservation: String?,
     val wikiUrl: String?,
     val miniProgram: String?,
+    /** null 表示数据里没有声明，按「可能对公众开放」处理，但不会据此伪造地址。 */
+    val openToPublic: Boolean? = null,
+    val type: String? = null,
+    val verifiedAt: String? = null,
+    val status: String? = null,
+)
+
+data class OfficialEntry(
+    val museum: String,
+    val appName: String,
+    val appId: String?,
+    val landingUrl: String?,
+    val schemeUrl: String?,
+    val officialUrl: String?,
+    val reservationUrl: String?,
+    val verifiedAt: String,
+    val wechatSearchName: String? = null,
+    val guideUrl: String? = null,
+    val exhibitionUrl: String? = null,
+    val status: String? = null,
 )
 
 data class CitySummary(

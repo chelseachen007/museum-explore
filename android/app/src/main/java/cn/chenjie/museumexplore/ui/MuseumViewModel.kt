@@ -16,6 +16,33 @@ class MuseumViewModel(application: Application) : AndroidViewModel(application) 
     fun refresh() { _revision.value += 1 }
     fun setCollected(id: Int, value: Boolean) { repository.setCollected(id, value); refresh() }
     fun setVisited(name: String, value: Boolean) { repository.setVisited(name, value); refresh() }
+
+    /** 想把某件国宝加进「想看」清单。 */
+    fun setRelicWished(id: Int, value: Boolean) { repository.setRelicWished(id, value); refresh() }
+
+    /** 想把某家博物馆加进「想去」清单。 */
+    fun setMuseumWished(name: String, value: Boolean) { repository.setMuseumWished(name, value); refresh() }
+
+    /** 补录一次参观；日期不确定时传 null，时间线显示「日期待补充」。 */
+    fun addVisit(museum: String, startedAt: Long?) { repository.addVisit(museum, startedAt); refresh() }
+
+    fun setVisitDate(visitId: String, startedAt: Long): Boolean {
+        val ok = repository.setVisitDate(visitId, startedAt)
+        refresh()
+        return ok
+    }
+
+    fun confirmVisit(visitId: String, startedAt: Long?) {
+        repository.confirmVisit(visitId, startedAt)
+        refresh()
+    }
+
+    fun updateVisitJournal(visitId: String, note: String, photos: List<VisitPhoto>) {
+        repository.updateVisitJournal(visitId, note, photos)
+        refresh()
+    }
+
+    fun removeVisit(visitId: String) { repository.removeVisit(visitId); refresh() }
     fun saveNote(id: Int, value: String) { repository.saveNote(id, value); refresh() }
     fun saveMuseumRecord(museum: String, note: String, photos: List<VisitPhoto>) {
         repository.saveMuseumRecord(museum, note, photos)

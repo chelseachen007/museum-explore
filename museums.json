@@ -16,27 +16,31 @@
       "type": "museum",
       "city": "上海",
       "province": "上海",
-      "officialUrl": "https://www.shanghaimuseum.net",
+      "officialUrl": "https://www.shanghaimuseum.net/",
       "wechat": "上海博物馆",
-      "address": "中国上海市黄浦区人民广场",
+      "address": "人民广场馆：上海市黄浦区人民大道201号；东馆：上海市浦东新区世纪大道1952号",
       "intro": "上海大型综合性古代艺术博物馆，馆藏逾百万件，以青铜器、陶瓷和书画见长。",
       "openingHours": "东馆 10:00—18:00，17:00 停止入场；基本陈列免预约。具体以官方公告为准。",
       "closedDays": null,
       "reservation": "通过上海博物馆官方渠道查询预约要求，具体以当日公告为准。",
       "sources": [
-        "https://www.shanghaimuseum.net",
-        "https://zh.wikipedia.org/wiki/%E4%B8%8A%E6%B5%B7%E5%8D%9A%E7%89%A9%E9%A6%86"
+        "https://www.shanghaimuseum.net/",
+        "https://www.shanghaimuseum.net/mu/frontend/pg/service/visit-west",
+        "https://www.shanghaimuseum.net/mu/frontend/pg/service/visit-east",
+        "https://zh.wikipedia.org/wiki/%E4%B8%8A%E6%B5%B7%E5%8D%9A%E7%89%A9%E9%A6%86",
+        "https://www.shanghaimuseum.net"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%B8%8A%E6%B5%B7%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "status": "verified",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%B8%8A%E6%B5%B7%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "云南省博物馆",
       "type": "museum",
       "city": "昆明",
       "province": "云南",
-      "officialUrl": "http://www.ynbwg.cn",
+      "officialUrl": "https://www.ynbwg.cn",
       "wechat": "云南省博物馆",
       "address": "中华人民共和国云南省昆明市官渡区广福路6393号",
       "intro": "云南省博物馆是中华人民共和国云南省昆明市的一家综合地志博物馆，是国家一级博物馆，创建于1951年，2015年迁至新馆。",
@@ -44,12 +48,13 @@
       "closedDays": null,
       "reservation": null,
       "sources": [
-        "http://www.ynbwg.cn",
-        "https://zh.wikipedia.org/wiki/%E4%BA%91%E5%8D%97%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
+        "https://zh.wikipedia.org/wiki/%E4%BA%91%E5%8D%97%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
+        "https://www.ynbwg.cn"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%BA%91%E5%8D%97%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%BA%91%E5%8D%97%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "中国国家博物馆",
@@ -58,22 +63,24 @@
       "province": "北京",
       "officialUrl": "https://www.chnmuseum.cn",
       "wechat": "中国国家博物馆",
-      "address": null,
+      "address": "北京市东城区东长安街16号（天安门广场东侧）",
       "intro": "以中国历史与中华文明主题收藏、研究和展示为主的国家级综合博物馆。",
       "openingHours": "9:00—17:30，16:00停止入馆；周一闭馆（法定节假日安排另行公告）。",
       "closedDays": null,
       "reservation": "通过中国国家博物馆官方预约渠道实名预约，具体以当日公告为准。",
       "sources": [
         "https://www.chnmuseum.cn/",
-        "https://www.chnmuseum.cn/yuyue/",
+        "https://www.chnmuseum.cn/cg/",
+        "https://www.chnmuseum.cn/shxg/lxwm/",
         "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD%E5%9B%BD%E5%AE%B6%E5%8D%9A%E7%89%A9%E9%A6%86",
         "https://www.chnmuseum.cn"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "verified_partial",
+      "verifiedAt": "2026-10-17",
+      "status": "verified",
       "miniProgram": "中国国家博物馆",
       "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD%E5%9B%BD%E5%AE%B6%E5%8D%9A%E7%89%A9%E9%A6%86",
-      "wechatVerifiedAt": "2026-10-16"
+      "wechatVerifiedAt": "2026-10-16",
+      "openToPublic": true
     },
     {
       "name": "中国国家图书馆",
@@ -88,13 +95,12 @@
       "closedDays": null,
       "reservation": null,
       "sources": [
-        "https://www.nlc.cn",
-        "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD%E5%9B%BD%E5%AE%B6%E5%9B%BE%E4%B9%A6%E9%A6%86",
         "https://www.nlc.cn"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD%E5%9B%BD%E5%AE%B6%E5%9B%BE%E4%B9%A6%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD%E5%9B%BD%E5%AE%B6%E5%9B%BE%E4%B9%A6%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "中国社会科学院考古研究所",
@@ -108,12 +114,11 @@
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
-      "sources": [
-        "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD%E7%A4%BE%E4%BC%9A%E7%A7%91%E5%AD%A6%E9%99%A2%E8%80%83%E5%8F%A4%E7%A0%94%E7%A9%B6%E6%89%80"
-      ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD%E7%A4%BE%E4%BC%9A%E7%A7%91%E5%AD%A6%E9%99%A2%E8%80%83%E5%8F%A4%E7%A0%94%E7%A9%B6%E6%89%80"
+      "sources": [],
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9B%BD%E7%A4%BE%E4%BC%9A%E7%A7%91%E5%AD%A6%E9%99%A2%E8%80%83%E5%8F%A4%E7%A0%94%E7%A9%B6%E6%89%80",
+      "openToPublic": false
     },
     {
       "name": "故宫博物院",
@@ -122,7 +127,7 @@
       "province": "北京",
       "officialUrl": "https://www.dpm.org.cn",
       "wechat": "故宫博物院",
-      "address": null,
+      "address": "主入口：北京市东城区景山前街4号（午门为观众入口）",
       "intro": "以明清故宫建筑群和中国古代艺术藏品为核心的综合性博物馆。",
       "openingHours": "旺季（4月1日—10月31日）8:30—17:00；淡季（11月1日—次年3月31日）8:30—16:30；周一闭馆（法定节假日除外）。",
       "closedDays": null,
@@ -130,13 +135,15 @@
       "sources": [
         "https://www.dpm.org.cn/",
         "https://www.dpm.org.cn/Visit.html",
+        "https://www.dpm.org.cn/singles_detail/252829.html",
         "https://zh.wikipedia.org/wiki/%E6%95%85%E5%AE%AB%E5%8D%9A%E7%89%A9%E9%99%A2",
         "https://www.dpm.org.cn"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "verified_partial",
+      "verifiedAt": "2026-10-17",
+      "status": "verified",
       "miniProgram": "故宫博物院",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%95%85%E5%AE%AB%E5%8D%9A%E7%89%A9%E9%99%A2"
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%95%85%E5%AE%AB%E5%8D%9A%E7%89%A9%E9%99%A2",
+      "openToPublic": true
     },
     {
       "name": "清华大学",
@@ -150,12 +157,11 @@
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
-      "sources": [
-        "https://zh.wikipedia.org/wiki/%E6%B8%85%E5%8D%8E%E5%A4%A7%E5%AD%A6"
-      ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B8%85%E5%8D%8E%E5%A4%A7%E5%AD%A6"
+      "sources": [],
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B8%85%E5%8D%8E%E5%A4%A7%E5%AD%A6",
+      "openToPublic": false
     },
     {
       "name": "首都博物馆",
@@ -172,12 +178,12 @@
       "sources": [
         "https://www.capitalmuseum.org.cn",
         "https://zh.wikipedia.org/wiki/%E9%A6%96%E9%83%BD%E5%8D%9A%E7%89%A9%E9%A6%86",
-        "https://www.capitalmuseum.org.cn",
         "https://www.capitalmuseum.org.cn/visit#a"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E9%A6%96%E9%83%BD%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E9%A6%96%E9%83%BD%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "吉林省博物院",
@@ -195,9 +201,10 @@
         "https://jlmuseum.net",
         "https://zh.wikipedia.org/wiki/%E5%90%89%E6%9E%97%E7%9C%81%E5%8D%9A%E7%89%A9%E9%99%A2"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%90%89%E6%9E%97%E7%9C%81%E5%8D%9A%E7%89%A9%E9%99%A2"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%90%89%E6%9E%97%E7%9C%81%E5%8D%9A%E7%89%A9%E9%99%A2",
+      "openToPublic": true
     },
     {
       "name": "三星堆博物馆",
@@ -212,32 +219,34 @@
       "closedDays": null,
       "reservation": null,
       "sources": [
-        "https://www.sxd.cn",
-        "https://zh.wikipedia.org/wiki/%E4%B8%89%E6%98%9F%E5%A0%86%E5%8D%9A%E7%89%A9%E9%A4%A8"
+        "https://www.sxd.cn"
       ],
       "verifiedAt": "2026-10-17",
       "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%B8%89%E6%98%9F%E5%A0%86%E5%8D%9A%E7%89%A9%E9%A4%A8"
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E4%B8%89%E6%98%9F%E5%A0%86%E5%8D%9A%E7%89%A9%E9%A4%A8",
+      "openToPublic": true
     },
     {
       "name": "成都金沙遗址博物馆",
       "type": "museum",
       "city": "成都",
       "province": "四川",
-      "officialUrl": "https://www.jinshasitemuseum.com",
+      "officialUrl": "https://www.jinshasitemuseum.com/",
       "wechat": "成都金沙遗址博物馆",
-      "address": null,
+      "address": "四川省成都市青羊区金沙遗址路2号",
       "intro": "位于成都金沙遗址的大型考古遗址博物馆，以商周古蜀文明的金器、玉器与青铜器为特色。",
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
       "sources": [
-        "https://www.jinshasitemuseum.com",
-        "https://zh.wikipedia.org/wiki/%E6%88%90%E9%83%BD%E9%87%91%E6%B2%99%E9%81%97%E5%9D%80%E5%8D%9A%E7%89%A9%E9%A6%86"
+        "https://www.jinshasitemuseum.com/",
+        "https://www.jinshasitemuseum.com/node/277",
+        "https://www.jinshasitemuseum.com"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%88%90%E9%83%BD%E9%87%91%E6%B2%99%E9%81%97%E5%9D%80%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "status": "verified",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%88%90%E9%83%BD%E9%87%91%E6%B2%99%E9%81%97%E5%9D%80%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "绵阳市博物馆",
@@ -255,8 +264,9 @@
         "https://museum.mianyang.cn/intro/about",
         "https://museum.mianyang.cn"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_verified_partial"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "openToPublic": true
     },
     {
       "name": "天津博物馆",
@@ -265,7 +275,7 @@
       "province": "天津",
       "officialUrl": "https://www.tjbwg.cn",
       "wechat": "里进行参观预约",
-      "address": "中国天津市河西区文化中心平江道62号",
+      "address": "天津市河西区平江道62号",
       "intro": "位于天津文化中心的大型历史艺术类综合博物馆，前身为1918年成立的天津博物院。",
       "openingHours": null,
       "closedDays": null,
@@ -278,7 +288,8 @@
       "verifiedAt": "2026-10-17",
       "status": "wiki_collected",
       "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%A4%A9%E6%B4%A5%E5%8D%9A%E7%89%A9%E9%A6%86",
-      "wechatVerifiedAt": "2026-10-16"
+      "wechatVerifiedAt": "2026-10-16",
+      "openToPublic": true
     },
     {
       "name": "宁夏博物馆",
@@ -287,18 +298,19 @@
       "province": "宁夏",
       "officialUrl": "https://www.nxbwg.com",
       "wechat": "宁夏博物馆",
-      "address": null,
+      "address": "宁夏回族自治区银川市金凤区人民广场东街6号",
       "intro": "宁夏回族自治区省级综合博物馆，馆藏以宁夏地方历史、西夏文物与岩画等为特色。",
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
       "sources": [
-        "https://www.nxbwg.com",
-        "https://zh.wikipedia.org/wiki/%E5%AE%81%E5%A4%8F%E5%8D%9A%E7%89%A9%E9%A6%86"
+        "https://www.nxbwg.com/",
+        "https://www.nxbwg.com"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%AE%81%E5%A4%8F%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "status": "verified",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%AE%81%E5%A4%8F%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "安徽博物院",
@@ -307,7 +319,7 @@
       "province": "安徽",
       "officialUrl": "https://www.ahm.cn",
       "wechat": "安徽博物院",
-      "address": "旧馆：中华人民共和国安徽省合肥市庐阳区安庆路268号新馆：中华人民共和国安徽省合肥市蜀山区怀宁路87号",
+      "address": "庐阳馆：合肥市庐阳区安庆路268号；蜀山馆：合肥市蜀山区怀宁路87号",
       "intro": "安徽省唯一的省级综合类博物馆，位于合肥，兼有庐阳馆与蜀山馆两个馆区。",
       "openingHours": null,
       "closedDays": null,
@@ -318,7 +330,8 @@
       ],
       "verifiedAt": "2026-10-17",
       "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%AE%89%E5%BE%BD%E5%8D%9A%E7%89%A9%E9%99%A2"
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%AE%89%E5%BE%BD%E5%8D%9A%E7%89%A9%E9%99%A2",
+      "openToPublic": true
     },
     {
       "name": "安徽省文物考古研究所",
@@ -334,8 +347,9 @@
       "reservation": null,
       "sources": [],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "verificationNote": "用户提供：暂无可用资料；开放时间、公众号、小程序和简介暂不填写。"
+      "status": "unavailable",
+      "verificationNote": "用户提供：暂无可用资料；开放时间、公众号、小程序和简介暂不填写。",
+      "openToPublic": false
     },
     {
       "name": "马鞍山市博物馆",
@@ -352,9 +366,10 @@
       "sources": [
         "https://zh.wikipedia.org/wiki/%E9%A9%AC%E9%9E%8D%E5%B1%B1%E5%B8%82%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E9%A9%AC%E9%9E%8D%E5%B1%B1%E5%B8%82%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E9%A9%AC%E9%9E%8D%E5%B1%B1%E5%B8%82%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "山东博物馆",
@@ -363,19 +378,19 @@
       "province": "山东",
       "officialUrl": "https://www.sdmuseum.com",
       "wechat": "山东博物馆",
-      "address": "中华人民共和国山东省济南市历下区经十路 11899号",
+      "address": "山东省济南市历下区经十路11899号",
       "intro": "位于济南的省级综合博物馆，前身为1954年成立的山东省博物馆，2010年更名为现名。",
       "openingHours": "开放时间 9:00 17:00 周二至周日（16:00停止进馆） 周一（除国家法定节假日）闭馆免费不免票，须携带有效证件领票入馆参观咨询电话：0531-85058201 讲解预约电话：0531-85058202（拨打时间：9:00—16:00） 在线预约足不出户，快速预订参观门票预约须知预约说明及注意事项早知晓参观路线多种类参观路线，满足不同游览需求交通路线来馆交通路线指引，便捷出行最新展览更多展览东夷文化展“东夷文",
       "closedDays": null,
       "reservation": null,
       "sources": [
         "https://www.sdmuseum.com",
-        "https://zh.wikipedia.org/wiki/%E5%B1%B1%E4%B8%9C%E5%8D%9A%E7%89%A9%E9%A6%86",
-        "https://www.sdmuseum.com"
+        "https://zh.wikipedia.org/wiki/%E5%B1%B1%E4%B8%9C%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
       "verifiedAt": "2026-10-17",
       "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%B1%B1%E4%B8%9C%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%B1%B1%E4%B8%9C%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "山东省文物考古研究院",
@@ -389,19 +404,18 @@
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
-      "sources": [
-        "https://zh.wikipedia.org/wiki/%E5%B1%B1%E4%B8%9C%E7%9C%81%E6%96%87%E7%89%A9%E8%80%83%E5%8F%A4%E7%A0%94%E7%A9%B6%E9%99%A2"
-      ],
+      "sources": [],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%B1%B1%E4%B8%9C%E7%9C%81%E6%96%87%E7%89%A9%E8%80%83%E5%8F%A4%E7%A0%94%E7%A9%B6%E9%99%A2"
+      "status": "unavailable",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%B1%B1%E4%B8%9C%E7%9C%81%E6%96%87%E7%89%A9%E8%80%83%E5%8F%A4%E7%A0%94%E7%A9%B6%E9%99%A2",
+      "openToPublic": false
     },
     {
       "name": "淄博市博物馆",
       "type": "museum",
       "city": "淄博",
       "province": "山东",
-      "officialUrl": "http://www.zbsbwg.com",
+      "officialUrl": "https://www.zbsbwg.com",
       "wechat": "淄博市博物馆",
       "address": "中华人民共和国山东省淄博市张店区商场西路153号",
       "intro": "淄博市博物馆位于中华人民共和国山东省淄博市张店区商场西路153号，该市中心广场北侧，是一家地志性综合性博物馆，国家一级博物馆。",
@@ -409,12 +423,13 @@
       "closedDays": null,
       "reservation": null,
       "sources": [
-        "http://www.zbsbwg.com",
-        "https://zh.wikipedia.org/wiki/%E6%B7%84%E5%8D%9A%E5%B8%82%E5%8D%9A%E7%89%A9%E9%A6%86"
+        "https://zh.wikipedia.org/wiki/%E6%B7%84%E5%8D%9A%E5%B8%82%E5%8D%9A%E7%89%A9%E9%A6%86",
+        "https://www.zbsbwg.com"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B7%84%E5%8D%9A%E5%B8%82%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B7%84%E5%8D%9A%E5%B8%82%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "大同市博物馆",
@@ -431,9 +446,10 @@
       "sources": [
         "https://zh.wikipedia.org/wiki/%E5%A4%A7%E5%90%8C%E5%B8%82%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%A4%A7%E5%90%8C%E5%B8%82%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%A4%A7%E5%90%8C%E5%B8%82%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "山西博物院",
@@ -449,13 +465,12 @@
       "reservation": "官方预约入口：个人预约",
       "sources": [
         "https://www.shanximuseum.com",
-        "https://zh.wikipedia.org/wiki/%E5%B1%B1%E8%A5%BF%E5%8D%9A%E7%89%A9%E9%99%A2",
-        "https://www.shanximuseum.com",
-        "javascript:void(0);"
+        "https://zh.wikipedia.org/wiki/%E5%B1%B1%E8%A5%BF%E5%8D%9A%E7%89%A9%E9%99%A2"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%B1%B1%E8%A5%BF%E5%8D%9A%E7%89%A9%E9%99%A2"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%B1%B1%E8%A5%BF%E5%8D%9A%E7%89%A9%E9%99%A2",
+      "openToPublic": true
     },
     {
       "name": "南越王博物院",
@@ -472,28 +487,31 @@
       "sources": [
         "https://zh.wikipedia.org/wiki/%E5%8D%97%E8%B6%8A%E7%8E%8B%E5%8D%9A%E7%89%A9%E9%99%A2"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%8D%97%E8%B6%8A%E7%8E%8B%E5%8D%9A%E7%89%A9%E9%99%A2"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%8D%97%E8%B6%8A%E7%8E%8B%E5%8D%9A%E7%89%A9%E9%99%A2",
+      "openToPublic": true
     },
     {
       "name": "新疆维吾尔自治区博物馆",
       "type": "museum",
       "city": "乌鲁木齐",
       "province": "新疆",
-      "officialUrl": null,
+      "officialUrl": "https://xjbwgpw.xjmuseum.com.cn/",
       "wechat": "新疆维吾尔自治区博物馆",
-      "address": "中华人民共和国新疆维吾尔自治区乌鲁木齐市沙依巴克区西北路581号",
+      "address": "新疆维吾尔自治区乌鲁木齐市沙依巴克区西北路581号",
       "intro": "位于乌鲁木齐市沙依巴克区，是新疆唯一的自治区级综合博物馆。",
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
       "sources": [
+        "https://xjbwgpw.xjmuseum.com.cn/",
         "https://zh.wikipedia.org/wiki/%E6%96%B0%E7%96%86%E7%BB%B4%E5%90%BE%E5%B0%94%E8%87%AA%E6%B2%BB%E5%8C%BA%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%96%B0%E7%96%86%E7%BB%B4%E5%90%BE%E5%B0%94%E8%87%AA%E6%B2%BB%E5%8C%BA%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "status": "verified",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%96%B0%E7%96%86%E7%BB%B4%E5%90%BE%E5%B0%94%E8%87%AA%E6%B2%BB%E5%8C%BA%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "新疆维吾尔自治区文物考古研究所",
@@ -502,17 +520,16 @@
       "province": "新疆",
       "officialUrl": null,
       "wechat": "新疆维吾尔自治区文物考古研究所",
-      "address": "乌鲁木齐市新市区北京南路东二巷3号",
+      "address": null,
       "intro": "新疆承担全疆文物考古调查、发掘与研究工作的研究机构，隶属新疆维吾尔自治区文化和旅游厅。",
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
-      "sources": [
-        "https://zh.wikipedia.org/wiki/%E6%96%B0%E7%96%86%E7%BB%B4%E5%90%BE%E5%B0%94%E8%87%AA%E6%B2%BB%E5%8C%BA%E6%96%87%E7%89%A9%E8%80%83%E5%8F%A4%E7%A0%94%E7%A9%B6%E6%89%80"
-      ],
+      "sources": [],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%96%B0%E7%96%86%E7%BB%B4%E5%90%BE%E5%B0%94%E8%87%AA%E6%B2%BB%E5%8C%BA%E6%96%87%E7%89%A9%E8%80%83%E5%8F%A4%E7%A0%94%E7%A9%B6%E6%89%80"
+      "status": "unavailable",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%96%B0%E7%96%86%E7%BB%B4%E5%90%BE%E5%B0%94%E8%87%AA%E6%B2%BB%E5%8C%BA%E6%96%87%E7%89%A9%E8%80%83%E5%8F%A4%E7%A0%94%E7%A9%B6%E6%89%80",
+      "openToPublic": false
     },
     {
       "name": "南京博物院",
@@ -530,9 +547,10 @@
         "https://www.njmuseum.com",
         "https://zh.wikipedia.org/wiki/%E5%8D%97%E4%BA%AC%E5%8D%9A%E7%89%A9%E9%99%A2"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%8D%97%E4%BA%AC%E5%8D%9A%E7%89%A9%E9%99%A2"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%8D%97%E4%BA%AC%E5%8D%9A%E7%89%A9%E9%99%A2",
+      "openToPublic": true
     },
     {
       "name": "南京大学",
@@ -550,8 +568,9 @@
         "https://zh.wikipedia.org/wiki/%E5%8D%97%E4%BA%AC%E5%A4%A7%E5%AD%A6"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%8D%97%E4%BA%AC%E5%A4%A7%E5%AD%A6"
+      "status": "unavailable",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%8D%97%E4%BA%AC%E5%A4%A7%E5%AD%A6",
+      "openToPublic": false
     },
     {
       "name": "南京市博物总馆",
@@ -568,9 +587,10 @@
       "sources": [
         "https://zh.wikipedia.org/wiki/%E5%8D%97%E4%BA%AC%E5%B8%82%E5%8D%9A%E7%89%A9%E6%80%BB%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%8D%97%E4%BA%AC%E5%B8%82%E5%8D%9A%E7%89%A9%E6%80%BB%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%8D%97%E4%BA%AC%E5%B8%82%E5%8D%9A%E7%89%A9%E6%80%BB%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "扬州博物馆",
@@ -587,9 +607,10 @@
       "sources": [
         "https://zh.wikipedia.org/wiki/%E6%8F%9A%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A4%A8"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%8F%9A%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A4%A8"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%8F%9A%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A4%A8",
+      "openToPublic": true
     },
     {
       "name": "苏州博物馆",
@@ -606,32 +627,34 @@
       "sources": [
         "https://www.szmuseum.com",
         "https://zh.wikipedia.org/wiki/%E8%8B%8F%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86",
-        "https://www.szmuseum.com",
         "https://www.szmuseum.com/Other/ReservationTip"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%8B%8F%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%8B%8F%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "镇江博物馆",
       "type": "museum",
       "city": "镇江",
       "province": "江苏",
-      "officialUrl": "https://www.zjmuseum.com.cn",
+      "officialUrl": "https://www.zjmuseum.com.cn/",
       "wechat": "镇江博物馆",
-      "address": null,
+      "address": "江苏省镇江市润州区伯先路85号",
       "intro": "鎮江博物館是一座集鎮江地區的地方歷史資料和藝術文化的綜合博物館。",
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
       "sources": [
-        "https://www.zjmuseum.com.cn",
-        "https://zh.wikipedia.org/wiki/%E9%95%87%E6%B1%9F%E5%8D%9A%E7%89%A9%E9%A6%86"
+        "https://www.zjmuseum.com.cn/",
+        "https://zh.wikipedia.org/wiki/%E9%95%87%E6%B1%9F%E5%8D%9A%E7%89%A9%E9%A6%86",
+        "https://www.zjmuseum.com.cn"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E9%95%87%E6%B1%9F%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E9%95%87%E6%B1%9F%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "江西省博物馆",
@@ -649,9 +672,10 @@
         "https://www.jxmuseum.cn",
         "https://zh.wikipedia.org/wiki/%E6%B1%9F%E8%A5%BF%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B1%9F%E8%A5%BF%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B1%9F%E8%A5%BF%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "定州市博物馆",
@@ -668,9 +692,10 @@
       "sources": [
         "https://zh.wikipedia.org/wiki/%E5%AE%9A%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%AE%9A%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%AE%9A%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "河北博物院",
@@ -687,12 +712,12 @@
       "sources": [
         "https://www.hebeimuseum.org.cn",
         "https://zh.wikipedia.org/wiki/%E6%B2%B3%E5%8C%97%E5%8D%9A%E7%89%A9%E9%99%A2",
-        "https://www.hebeimuseum.org.cn",
         "https://www.hebeimuseum.org.cn/list-1-1.html#floor1"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B2%B3%E5%8C%97%E5%8D%9A%E7%89%A9%E9%99%A2"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B2%B3%E5%8C%97%E5%8D%9A%E7%89%A9%E9%99%A2",
+      "openToPublic": true
     },
     {
       "name": "河南博物院",
@@ -709,20 +734,20 @@
       "sources": [
         "https://www.chnmus.net",
         "https://zh.wikipedia.org/wiki/%E6%B2%B3%E5%8D%97%E5%8D%9A%E7%89%A9%E9%99%A2",
-        "https://www.chnmus.net",
         "https://www.chnmus.net/content/redirect?id=7076857083869532160"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
       "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B2%B3%E5%8D%97%E5%8D%9A%E7%89%A9%E9%99%A2",
-      "wechatVerifiedAt": "2026-10-16"
+      "wechatVerifiedAt": "2026-10-16",
+      "openToPublic": true
     },
     {
       "name": "洛阳博物馆",
       "type": "museum",
       "city": "洛阳",
       "province": "河南",
-      "officialUrl": "http://www.lymuseum.com",
+      "officialUrl": "https://www.lymuseum.com",
       "wechat": "扫码关注",
       "address": "中华人民共和国河南省洛阳市洛龙区聂泰路（新馆） 河南省洛阳市西工区中州中路298号（旧馆）",
       "intro": "洛阳博物馆是中国河南省洛阳市一家综合性的历史博物馆，国家一级博物馆。",
@@ -730,14 +755,14 @@
       "closedDays": null,
       "reservation": "官方预约入口：游客预约参观须知",
       "sources": [
-        "http://www.lymuseum.com",
         "https://zh.wikipedia.org/wiki/%E6%B4%9B%E9%98%B3%E5%8D%9A%E7%89%A9%E9%A6%86",
-        "http://www.lymuseum.com/tzgg/2108.html"
+        "https://www.lymuseum.com"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
       "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B4%9B%E9%98%B3%E5%8D%9A%E7%89%A9%E9%A6%86",
-      "wechatVerifiedAt": "2026-10-16"
+      "wechatVerifiedAt": "2026-10-16",
+      "openToPublic": true
     },
     {
       "name": "杭州博物馆",
@@ -755,9 +780,10 @@
         "https://hz-museum.cn",
         "https://zh.wikipedia.org/wiki/%E6%9D%AD%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%9D%AD%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%9D%AD%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "杭州市临安区博物馆",
@@ -766,7 +792,7 @@
       "province": "浙江",
       "officialUrl": null,
       "wechat": "杭州市临安区博物馆",
-      "address": null,
+      "address": "杭州市临安区锦城街道天目路800号（吴越文化公园内）",
       "intro": "位于杭州临安，以吴越国钱氏家族墓出土文物为重要馆藏特色。",
       "openingHours": null,
       "closedDays": null,
@@ -775,50 +801,57 @@
         "https://zh.wikipedia.org/wiki/%E6%9D%AD%E5%B7%9E%E5%B8%82%E4%B8%B4%E5%AE%89%E5%8C%BA%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%9D%AD%E5%B7%9E%E5%B8%82%E4%B8%B4%E5%AE%89%E5%8C%BA%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%9D%AD%E5%B7%9E%E5%B8%82%E4%B8%B4%E5%AE%89%E5%8C%BA%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "浙江省博物馆",
       "type": "museum",
       "city": "杭州",
       "province": "浙江",
-      "officialUrl": "https://www.zhejiangmuseum.com",
+      "officialUrl": "https://www.zjmuseum.com.cn/cn/",
       "wechat": "浙江省博物馆",
-      "address": "孤山馆区：杭州市西湖区孤山路25号；之江馆区：杭州市西湖区碧波路",
+      "address": "孤山馆区：杭州市西湖区孤山路25号；之江馆区：杭州市西湖区转塘街道江涵路300号之江文化中心",
       "intro": "始建于1929年，是浙江规模最大的综合性博物馆。",
       "openingHours": "各馆区开放时间与闭馆日可能不同，以官方公告为准。",
       "closedDays": null,
       "reservation": "通过浙江省博物馆官方渠道预约，具体以当日公告为准。",
       "sources": [
-        "https://www.zhejiangmuseum.com",
-        "https://zh.wikipedia.org/wiki/%E6%B5%99%E6%B1%9F%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
+        "https://www.zjmuseum.com.cn/cn/",
+        "https://www.zjmuseum.com.cn/cn/#/Survey",
+        "https://www.zjmuseum.com.cn/cn/#/Service",
+        "https://zh.wikipedia.org/wiki/%E6%B5%99%E6%B1%9F%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
+        "https://www.zhejiangmuseum.com"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "official_source_partial",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B5%99%E6%B1%9F%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "status": "verified",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B5%99%E6%B1%9F%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "湖北省博物馆",
       "type": "museum",
       "city": "武汉",
       "province": "湖北",
-      "officialUrl": "http://www.hbww.org",
+      "officialUrl": "https://www.hbww.org.cn/",
       "wechat": "湖北省博物馆",
-      "address": null,
+      "address": "武汉市武昌区东湖路160号（散客南门入馆）",
       "intro": "以湖北地区考古发现和楚文化、曾侯乙墓出土文物为重要特色的省级博物馆。",
       "openingHours": "9:00—17:00，16:00停止入馆；周一闭馆（法定节假日安排另行公告）。",
       "closedDays": null,
       "reservation": "通过湖北省博物馆官方预约渠道实名预约，具体以官方公告为准。",
       "sources": [
-        "https://www.hbww.org/",
+        "https://www.hbww.org.cn/",
+        "https://www.hbww.org.cn/fuwu/index.html",
         "https://zh.wikipedia.org/wiki/%E6%B9%96%E5%8C%97%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
-        "http://www.hbww.org"
+        "https://www.hbww.org"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "verified_partial",
+      "verifiedAt": "2026-10-17",
+      "status": "verified",
       "miniProgram": "湖北省博物馆",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B9%96%E5%8C%97%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B9%96%E5%8C%97%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "荆门市博物馆",
@@ -835,9 +868,10 @@
       "sources": [
         "https://zh.wikipedia.org/wiki/%E8%8D%86%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%8D%86%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%8D%86%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "湖南博物院",
@@ -846,19 +880,21 @@
       "province": "湖南",
       "officialUrl": "https://www.hnmuseum.com",
       "wechat": "湖南博物院",
-      "address": null,
+      "address": "湖南省长沙市开福区东风路50号",
       "intro": "以湖南地区历史文化、马王堆汉墓出土文物和楚文化为重要特色的省级博物院。",
       "openingHours": "具体开放时段和闭馆日以湖南博物院官方公告、预约页面为准。",
       "closedDays": null,
       "reservation": "通过湖南博物院官方预约渠道实名预约。",
       "sources": [
         "https://www.hnmuseum.com/",
+        "https://www.hnmuseum.com/zh-hans/content/%E5%8F%82%E8%A7%82",
         "https://www.hnmuseum.com"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_pending_hours",
+      "verifiedAt": "2026-10-17",
+      "status": "verified",
       "miniProgram": "湖南博物院",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B9%96%E5%8D%97%E5%8D%9A%E7%89%A9%E9%99%A2"
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B9%96%E5%8D%97%E5%8D%9A%E7%89%A9%E9%99%A2",
+      "openToPublic": true
     },
     {
       "name": "湖南大学",
@@ -872,12 +908,11 @@
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
-      "sources": [
-        "https://zh.wikipedia.org/wiki/%E6%B9%96%E5%8D%97%E5%A4%A7%E5%AD%A6"
-      ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B9%96%E5%8D%97%E5%A4%A7%E5%AD%A6"
+      "sources": [],
+      "verifiedAt": "2026-10-17",
+      "status": "unavailable",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B9%96%E5%8D%97%E5%A4%A7%E5%AD%A6",
+      "openToPublic": false
     },
     {
       "name": "敦煌研究院",
@@ -893,13 +928,13 @@
       "reservation": null,
       "sources": [
         "https://www.dha.ac.cn",
-        "https://zh.wikipedia.org/wiki/%E6%95%A6%E7%85%8C%E7%A0%94%E7%A9%B6%E9%99%A2",
-        "https://www.dha.ac.cn"
+        "https://zh.wikipedia.org/wiki/%E6%95%A6%E7%85%8C%E7%A0%94%E7%A9%B6%E9%99%A2"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
       "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%95%A6%E7%85%8C%E7%A0%94%E7%A9%B6%E9%99%A2",
-      "wechatVerifiedAt": "2026-10-16"
+      "wechatVerifiedAt": "2026-10-16",
+      "openToPublic": true
     },
     {
       "name": "甘肃省博物馆",
@@ -917,16 +952,17 @@
         "https://www.gansumuseum.com",
         "https://zh.wikipedia.org/wiki/%E7%94%98%E8%82%83%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E7%94%98%E8%82%83%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E7%94%98%E8%82%83%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "西藏博物馆",
       "type": "museum",
       "city": "拉萨",
       "province": "西藏",
-      "officialUrl": null,
+      "officialUrl": "https://www.tibetmuseum.com.cn/pc",
       "wechat": "西藏博物馆",
       "address": "拉萨市城关区罗布林卡路19号",
       "intro": "位于拉萨市城关区，是西藏第一座具有现代化功能的博物馆。",
@@ -934,11 +970,13 @@
       "closedDays": null,
       "reservation": null,
       "sources": [
+        "https://www.tibetmuseum.com.cn/pc",
         "https://zh.wikipedia.org/wiki/%E8%A5%BF%E8%97%8F%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%A5%BF%E8%97%8F%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "status": "verified",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%A5%BF%E8%97%8F%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "贵州省博物馆",
@@ -955,13 +993,13 @@
       "sources": [
         "https://www.gzmuseum.com",
         "https://zh.wikipedia.org/wiki/%E8%B4%B5%E5%B7%9E%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
-        "https://www.gzmuseum.com",
         "https://www.gzmuseum.com/wsyy.html"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
       "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%B4%B5%E5%B7%9E%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
-      "wechatVerifiedAt": "2026-10-16"
+      "wechatVerifiedAt": "2026-10-16",
+      "openToPublic": true
     },
     {
       "name": "辽宁省博物馆",
@@ -979,9 +1017,10 @@
         "https://www.lnmuseum.com.cn",
         "https://zh.wikipedia.org/wiki/%E8%BE%BD%E5%AE%81%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%BE%BD%E5%AE%81%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%BE%BD%E5%AE%81%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "辽宁省文物考古研究院",
@@ -997,27 +1036,29 @@
       "reservation": null,
       "sources": [],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "verificationNote": "用户提供：暂无可用资料；开放时间、公众号、小程序和简介暂不填写。"
+      "status": "unavailable",
+      "verificationNote": "用户提供：暂无可用资料；开放时间、公众号、小程序和简介暂不填写。",
+      "openToPublic": false
     },
     {
       "name": "周原博物馆",
       "type": "museum",
       "city": "宝鸡",
       "province": "陕西",
-      "officialUrl": "http://www.zhouyuanmuseum.com",
+      "officialUrl": "https://www.zhouyuanmuseum.com",
       "wechat": "周原博物馆",
-      "address": null,
+      "address": "陕西省宝鸡市扶风县法门镇召陈村",
       "intro": "位于陕西宝鸡扶风、岐山一带的周原遗址，以出土西周青铜器与甲骨闻名。",
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
       "sources": [
         "https://baike.baidu.com/item/%E5%91%A8%E5%8E%9F%E5%8D%9A%E7%89%A9%E9%A6%86/6487672",
-        "http://www.zhouyuanmuseum.com"
+        "https://www.zhouyuanmuseum.com"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected"
+      "status": "verified_partial",
+      "openToPublic": true
     },
     {
       "name": "宝鸡青铜器博物院",
@@ -1034,33 +1075,34 @@
       "sources": [
         "https://www.bjqtm.com",
         "https://zh.wikipedia.org/wiki/%E5%AE%9D%E9%B8%A1%E9%9D%92%E9%93%9C%E5%99%A8%E5%8D%9A%E7%89%A9%E9%99%A2",
-        "https://www.bjqtm.com",
         "https://www.bjqtm.com/sy/%e7%bd%91%e4%b8%8a%e9%a2%84%e7%ba%a6"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
       "wikiUrl": "https://zh.wikipedia.org/wiki/%E5%AE%9D%E9%B8%A1%E9%9D%92%E9%93%9C%E5%99%A8%E5%8D%9A%E7%89%A9%E9%99%A2",
-      "wechatVerifiedAt": "2026-10-16"
+      "wechatVerifiedAt": "2026-10-16",
+      "openToPublic": true
     },
     {
       "name": "法门寺博物馆",
       "type": "museum",
       "city": "宝鸡",
       "province": "陕西",
-      "officialUrl": "http://www.famensi.com",
+      "officialUrl": "https://www.famensi.com",
       "wechat": "法门寺博物馆",
-      "address": null,
+      "address": "陕西省宝鸡市扶风县法门镇",
       "intro": "依托法门寺唐代地宫遗址建立，以佛指舍利与唐代皇室供奉珍宝为主要馆藏。",
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
       "sources": [
-        "http://www.famensi.com",
-        "https://zh.wikipedia.org/wiki/%E6%B3%95%E9%97%A8%E5%AF%BA%E5%8D%9A%E7%89%A9%E9%A6%86"
+        "https://zh.wikipedia.org/wiki/%E6%B3%95%E9%97%A8%E5%AF%BA%E5%8D%9A%E7%89%A9%E9%A6%86",
+        "https://www.famensi.com"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B3%95%E9%97%A8%E5%AF%BA%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E6%B3%95%E9%97%A8%E5%AF%BA%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "淳化县博物馆",
@@ -1077,30 +1119,32 @@
       "sources": [
         "https://baike.baidu.com/item/%E6%B7%B3%E5%8C%96%E5%8E%BF%E5%博物馆/17517124"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "secondary_source_verified"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "openToPublic": true
     },
     {
       "name": "秦始皇帝陵博物院",
       "type": "museum",
       "city": "西安",
       "province": "陕西",
-      "officialUrl": "https://www.bmy.com.cn",
+      "officialUrl": "https://www.bmy.com.cn/",
       "wechat": "实现门票预约",
-      "address": null,
+      "address": "帝陵：陕西省西安市临潼区秦陵北路；兵马俑：陕西省西安市临潼区秦陵街道",
       "intro": "依托秦始皇陵与兵马俑坑建立，是展示秦代军事、车马与陵寝制度的遗址博物馆。",
       "openingHours": "开放时间旺季 3月16日—11月15日闭馆时间18:30 08:30-17:00 淡季 11月16日—次年3月15日闭馆时间18:00 08:30-16:30 票务与服务购票方式秦始皇帝陵博物院实行实名制预约参观，观众朋友（含政策性免票人员、港澳台及外籍观众）可通过官方网站和微信公众号实现门票预约",
       "closedDays": null,
       "reservation": null,
       "sources": [
-        "https://www.bmy.com.cn",
-        "https://zh.wikipedia.org/wiki/%E7%A7%A6%E5%A7%8B%E7%9A%87%E5%B8%9D%E9%99%B5%E5%8D%9A%E7%89%A9%E9%99%A2",
+        "https://www.bmy.com.cn/",
+        "https://www.bmy.com.cn/guide.html",
         "https://www.bmy.com.cn"
       ],
       "verifiedAt": "2026-10-17",
-      "status": "wiki_collected",
+      "status": "verified",
       "wikiUrl": "https://zh.wikipedia.org/wiki/%E7%A7%A6%E5%A7%8B%E7%9A%87%E5%B8%9D%E9%99%B5%E5%8D%9A%E7%89%A9%E9%99%A2",
-      "wechatVerifiedAt": "2026-10-16"
+      "wechatVerifiedAt": "2026-10-16",
+      "openToPublic": true
     },
     {
       "name": "茂陵博物馆",
@@ -1117,9 +1161,10 @@
       "sources": [
         "https://zh.wikipedia.org/wiki/%E8%8C%82%E9%99%B5%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%8C%82%E9%99%B5%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%8C%82%E9%99%B5%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     },
     {
       "name": "西安博物院",
@@ -1136,9 +1181,10 @@
       "sources": [
         "https://zh.wikipedia.org/wiki/%E8%A5%BF%E5%AE%89%E5%8D%9A%E7%89%A9%E9%99%A2"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%A5%BF%E5%AE%89%E5%8D%9A%E7%89%A9%E9%99%A2"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%A5%BF%E5%AE%89%E5%8D%9A%E7%89%A9%E9%99%A2",
+      "openToPublic": true
     },
     {
       "name": "西安碑林博物馆",
@@ -1154,13 +1200,13 @@
       "reservation": null,
       "sources": [
         "https://www.beilin-museum.com",
-        "https://zh.wikipedia.org/wiki/%E8%A5%BF%E5%AE%89%E7%A2%91%E6%9E%97%E5%8D%9A%E7%89%A9%E9%A6%86",
-        "https://www.beilin-museum.com"
+        "https://zh.wikipedia.org/wiki/%E8%A5%BF%E5%AE%89%E7%A2%91%E6%9E%97%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
       "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%A5%BF%E5%AE%89%E7%A2%91%E6%9E%97%E5%8D%9A%E7%89%A9%E9%A6%86",
-      "wechatVerifiedAt": "2026-10-16"
+      "wechatVerifiedAt": "2026-10-16",
+      "openToPublic": true
     },
     {
       "name": "陕西历史博物馆",
@@ -1176,13 +1222,13 @@
       "reservation": null,
       "sources": [
         "https://www.sxhm.com",
-        "https://zh.wikipedia.org/wiki/%E9%99%95%E8%A5%BF%E5%8E%86%E5%8F%B2%E5%8D%9A%E7%89%A9%E9%A6%86",
-        "https://www.sxhm.com"
+        "https://zh.wikipedia.org/wiki/%E9%99%95%E8%A5%BF%E5%8E%86%E5%8F%B2%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "official_source_partial",
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
       "wikiUrl": "https://zh.wikipedia.org/wiki/%E9%99%95%E8%A5%BF%E5%8E%86%E5%8F%B2%E5%8D%9A%E7%89%A9%E9%A6%86",
-      "wechatVerifiedAt": "2026-10-16"
+      "wechatVerifiedAt": "2026-10-16",
+      "openToPublic": true
     },
     {
       "name": "青海省博物馆",
@@ -1200,9 +1246,10 @@
         "https://www.qhmuseum.com",
         "https://zh.wikipedia.org/wiki/%E9%9D%92%E6%B5%B7%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
       ],
-      "verifiedAt": "2026-10-16",
-      "status": "wiki_collected",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E9%9D%92%E6%B5%B7%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86"
+      "verifiedAt": "2026-10-17",
+      "status": "verified_partial",
+      "wikiUrl": "https://zh.wikipedia.org/wiki/%E9%9D%92%E6%B5%B7%E7%9C%81%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "openToPublic": true
     }
   ]
 }
