@@ -100,6 +100,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -114,6 +115,13 @@ import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import android.util.Log
+import com.amap.api.maps.AMap
+import com.amap.api.maps.CameraUpdateFactory
+import com.amap.api.maps.MapView
+import com.amap.api.maps.MapsInitializer
+import com.amap.api.maps.model.BitmapDescriptorFactory
+import com.amap.api.maps.model.LatLng
+import com.amap.api.maps.model.MarkerOptions
 import okhttp3.OkHttpClient
 import cn.chenjie.museumexplore.data.MuseumRepository
 import cn.chenjie.museumexplore.model.CitySummary
@@ -320,7 +328,7 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
     if (mapKeyDialog) MapKeyDialog(repository.mapKey(), { viewModel.saveMapKey(it); mapKeyDialog = false }, { mapKeyDialog = false }, {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.amap.com/dev/key/app")))
     })
-    if (aboutDialog) InfoDialog("博迹", "195 件永禁出境文物\n本地记录版\n版本 0.6.0\n\n想去、已到访、已看到、照片、感想和参观时间线默认保存在本机。官方入口交给微信或系统浏览器打开，应用不读取你的位置。") { aboutDialog = false }
+    if (aboutDialog) InfoDialog("博迹", "195 件永禁出境文物\n本地记录版\n版本 0.6.1\n\n想去、已到访、已看到、照片、感想和参观时间线默认保存在本机。官方入口交给微信或系统浏览器打开，应用不读取你的位置。") { aboutDialog = false }
     if (protocolDialog) InfoDialog("隐私与协议", "本应用不申请定位权限，不读取或保存位置信息。到访记录只来自你的手动确认。\n\n想去、已到访、已看到、照片、感想和时间线默认只保存在本机，不上传第三方。打开官方小程序或网站时，由微信或系统浏览器处理页面内容，适用对应服务的隐私政策。\n\nWikimedia Commons 图片按数据中的许可信息使用。") { protocolDialog = false }
 }
 
@@ -1013,12 +1021,34 @@ private fun MapScreen(
 ) {
     val selectedCity = remember(revision) { repository.selectedCity() }
     val cities = remember(revision) { repository.cities() }
+    val key = remember(revision) { repository.mapKey() }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         PageHeader(
             "EXPLORE / NEXT STOP",
             "今天去哪",
-            "先选城市，再决定下一站。不读取你的位置，也不显示距离。",
+            if (selectedCity.isBlank()) "先选城市，再决定下一站。不读取你的位置，也不显示距离。"
+            else "$selectedCity · 地图与推荐",
         )
+        if (key.isBlank()) {
+            Card(
+                Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(18.dp),
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Text("地图需要高德 Android Key", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Key 只保存在本机，不会上传。请到「更多」里申请和保存。", modifier = Modifier.padding(top = 8.dp))
+                    Button(
+                        onClick = { navController.navigate("more") },
+                        modifier = Modifier.padding(top = 12.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                    ) { Text("去更多设置", color = Color.White) }
+                }
+            }
+        } else {
+            AmapView(repository, selectedCity, key, Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp).height(260.dp))
+        }
         LazyColumn(contentPadding = PaddingValues(0.dp, 0.dp, 0.dp, 24.dp)) {
             item {
                 NextStopSection(
@@ -1064,6 +1094,60 @@ private fun MapScreen(
 }
 
 @Composable
+private fun AmapView(repository: MuseumRepository, city: String, key: String, modifier: Modifier) {
+    AndroidView(factory = { context ->
+        MapsInitializer.updatePrivacyShow(context, true, true)
+        MapsInitializer.updatePrivacyAgree(context, true)
+        MapsInitializer.setApiKey(key)
+        MapView(context).also { mapView ->
+            mapView.onCreate(null)
+            mapView.onResume()
+            val map = mapView.map
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(mapCenter(city), if (city.isBlank()) 4.3f else 11.2f))
+            addMuseumMarkers(map, repository, city)
+        }
+    }, modifier = modifier.clip(RoundedCornerShape(18.dp)), update = {}, onRelease = { mapView ->
+        mapView.onPause()
+        mapView.onDestroy()
+    })
+}
+
+private fun addMuseumMarkers(map: AMap, repository: MuseumRepository, city: String) {
+    val coords = mapOf(
+        "北京" to LatLng(39.9042, 116.4074),
+        "西安" to LatLng(34.3416, 108.9398),
+        "上海" to LatLng(31.2304, 121.4737),
+        "杭州" to LatLng(30.2741, 120.1551),
+        "武汉" to LatLng(30.5928, 114.3055),
+        "长沙" to LatLng(28.2282, 112.9388),
+        "成都" to LatLng(30.5728, 104.0668),
+        "沈阳" to LatLng(41.8057, 123.4315),
+    )
+    coords.filter { city.isBlank() || it.key == city }.forEach { (name, center) ->
+        repository.museumNames(name).forEachIndexed { index, museum ->
+            map.addMarker(
+                MarkerOptions()
+                    .position(LatLng(center.latitude + index * .035, center.longitude + index * .045))
+                    .title(museum)
+                    .snippet("${repository.relicCount(museum)} 件永禁文物")
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_museum_pin)),
+            )
+        }
+    }
+}
+
+private fun mapCenter(city: String): LatLng = mapOf(
+    "北京" to LatLng(39.9042, 116.4074),
+    "上海" to LatLng(31.2304, 121.4737),
+    "杭州" to LatLng(30.2741, 120.1551),
+    "西安" to LatLng(34.3416, 108.9398),
+    "武汉" to LatLng(30.5928, 114.3055),
+    "长沙" to LatLng(28.2282, 112.9388),
+    "成都" to LatLng(30.5728, 104.0668),
+    "沈阳" to LatLng(41.8057, 123.4315),
+)[city] ?: LatLng(35.86, 104.2)
+
+@Composable
 private fun CityMapCard(city: CitySummary, onClick: () -> Unit) {
     Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(16.dp)) {
@@ -1095,7 +1179,7 @@ private fun MoreScreen(
         SettingsRow("导出备份", "保存状态、时间线、照片和感想", Icons.Outlined.UploadFile, onExport)
         SettingsRow("导入备份", "从 ZIP 恢复本机记录", Icons.Outlined.CollectionsBookmark, onImport)
         SectionLabel("关于")
-        SettingsRow("关于与更新", "版本 0.6.0 · 检查更新", Icons.Outlined.Info, onAbout)
+        SettingsRow("关于与更新", "版本 0.6.1 · 检查更新", Icons.Outlined.Info, onAbout)
         SettingsRow("隐私与协议", "本地存储说明、第三方服务协议", Icons.Outlined.Policy, onProtocol)
         Spacer(Modifier.height(20.dp))
     }
