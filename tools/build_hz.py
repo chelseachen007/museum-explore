@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """生成「杭州国宝地图」原型 v0.2（腾讯地图合规版 + 示意图 + 官方入口 + 足迹分享图）"""
 import json, os, sys
+from urllib.parse import quote
 # 全部路径相对脚本自身定位，整个工作区搬到哪里都能跑
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
@@ -71,7 +72,8 @@ slim = [{
     'id': i['id'], 'name': i['name'], 'era': i['era'], 'cat': i['catMain'],
     'museum': i['museum'], 'batchName': i['batchName'], 'tags': i['tags'],
     'reason': i['reason'], 'story': i['story'],
-    'image': i.get('image'), 'model': i.get('model'), 'imageCredit': i.get('imageCredit'),
+    'image': (quote(i.get('image'), safe='/') if (i.get('image') or '').startswith('relic_images/') else i.get('image')),
+    'model': i.get('model'), 'imageCredit': i.get('imageCredit'),
     'art': art_svg(i['catMain'], 56),
     'mk': next(m['key'] for m in MUSEUMS if m['match'] in i['museum'])
 } for i in HZ]

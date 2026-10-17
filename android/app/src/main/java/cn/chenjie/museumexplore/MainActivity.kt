@@ -1,5 +1,6 @@
 package cn.chenjie.museumexplore
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -8,6 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,8 +56,11 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -101,8 +108,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import android.util.Log
+import okhttp3.OkHttpClient
 import com.amap.api.maps.AMap
 import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.MapView
@@ -114,10 +124,16 @@ import cn.chenjie.museumexplore.data.MuseumRepository
 import cn.chenjie.museumexplore.model.CitySummary
 import cn.chenjie.museumexplore.model.MuseumInfo
 import cn.chenjie.museumexplore.model.Relic
+import cn.chenjie.museumexplore.ui.GalleryImage
+import cn.chenjie.museumexplore.ui.ImageViewerDialog
 import cn.chenjie.museumexplore.ui.MuseumTheme
 import cn.chenjie.museumexplore.ui.MuseumViewModel
+import cn.chenjie.museumexplore.ui.MuseumVisitRecordSection
+import cn.chenjie.museumexplore.ui.RelicImageCarousel
+import cn.chenjie.museumexplore.ui.VisitRecordSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -132,6 +148,28 @@ private sealed class AppDestination(val route: String, val label: String) {
     data object Collection : AppDestination("collection", "国宝")
     data object Map : AppDestination("map", "地图")
     data object More : AppDestination("more", "更多")
+}
+
+internal object MuseumImageLoaderHolder {
+    @Volatile
+    private var instance: ImageLoader? = null
+
+    fun get(context: Context): ImageLoader = instance ?: synchronized(this) {
+        instance ?: ImageLoader.Builder(context.applicationContext)
+            .okHttpClient {
+                OkHttpClient.Builder()
+                    .addInterceptor { chain ->
+                        chain.proceed(
+                            chain.request().newBuilder()
+                                .header("User-Agent", "BoJi/0.5.1 (Android museum exploration app)")
+                                .build(),
+                        )
+                    }
+                    .build()
+            }
+            .build()
+            .also { instance = it }
+    }
 }
 
 @Composable
@@ -151,13 +189,9 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
     }
     val revision by viewModel.revision.collectAsState()
     val context = LocalContext.current
-    var recordRelic by remember { mutableStateOf<Relic?>(null) }
     var mapKeyDialog by remember { mutableStateOf(false) }
     var aboutDialog by remember { mutableStateOf(false) }
     var protocolDialog by remember { mutableStateOf(false) }
-    val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        if (uris.isNotEmpty()) viewModel.saveLastPhoto(uris.joinToString(",") { it.toString() })
-    }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) context.contentResolver.openOutputStream(uri)?.use { repository.exportBackup(it) }
     }
@@ -166,6 +200,7 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
     }
     val currentEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentEntry?.destination?.route.orEmpty()
+    val swipeTabsEnabled = currentRoute == "collection" || currentRoute == "map" || currentRoute == "more"
     val activeTab = when {
         currentRoute.startsWith("map") || currentRoute.startsWith("city") || currentRoute.startsWith("museum") -> 1
         currentRoute == "more" -> 2
@@ -193,18 +228,41 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .pointerInput(activeTab) {
-                    detectHorizontalDragGestures { _, dragAmount ->
-                        if (dragAmount < -72) navigateTab(navController, destinations[(activeTab + 1).coerceAtMost(2)].route)
-                        if (dragAmount > 72) navigateTab(navController, destinations[(activeTab - 1).coerceAtLeast(0)].route)
-                    }
-                },
+                .then(
+                    if (swipeTabsEnabled) {
+                        Modifier.pointerInput(activeTab) {
+                            detectHorizontalDragGestures { _, dragAmount ->
+                                if (dragAmount < -72) navigateTab(navController, destinations[(activeTab + 1).coerceAtMost(2)].route)
+                                if (dragAmount > 72) navigateTab(navController, destinations[(activeTab - 1).coerceAtLeast(0)].route)
+                            }
+                        }
+                    } else Modifier,
+                ),
         ) {
-            NavHost(navController, startDestination = AppDestination.Collection.route) {
+            NavHost(
+                navController = navController,
+                startDestination = AppDestination.Collection.route,
+                enterTransition = { fadeIn(tween(120)) },
+                exitTransition = { fadeOut(tween(80)) },
+                popEnterTransition = { fadeIn(tween(100)) },
+                popExitTransition = { fadeOut(tween(70)) },
+            ) {
                 composable("collection") { CollectionScreen(repository, revision, { navController.navigate("relic/${it.id}") }) }
                 composable("relic/{id}") { entry ->
                     val relic = repository.relics().firstOrNull { it.id == entry.arguments?.getString("id")?.toIntOrNull() }
-                    if (relic != null) RelicDetailScreen(repository, viewModel, relic, { navController.popBackStack() }, { recordRelic = relic }, { navController.navigate("map") })
+                    if (relic != null) {
+                        RelicDetailScreen(
+                            repository = repository,
+                            viewModel = viewModel,
+                            relic = relic,
+                            revision = revision,
+                            onBack = { navController.popBackStack() },
+                            onOpenMuseumRecord = { city, museum ->
+                                navController.navigate("museum/${Uri.encode(city)}/${Uri.encode(museum)}")
+                            },
+                            onMap = { navController.navigate("map") },
+                        )
+                    }
                 }
                 composable("map") { MapScreen(repository, viewModel, navController) }
                 composable("city/{city}") { entry ->
@@ -214,7 +272,7 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                 composable("museum/{city}/{museum}") { entry ->
                     val city = Uri.decode(entry.arguments?.getString("city").orEmpty())
                     val museum = Uri.decode(entry.arguments?.getString("museum").orEmpty())
-                    MuseumDetailScreen(repository, viewModel, city, museum, navController)
+                    MuseumDetailScreen(repository, viewModel, city, museum, revision, navController)
                 }
                 composable("more") {
                     MoreScreen(
@@ -233,11 +291,10 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
         }
     }
 
-    if (recordRelic != null) RecordSheet(recordRelic!!, repository, viewModel, { photoLauncher.launch(arrayOf("image/*")) }, { recordRelic = null })
     if (mapKeyDialog) MapKeyDialog(repository.mapKey(), { viewModel.saveMapKey(it); mapKeyDialog = false }, { mapKeyDialog = false }, {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.amap.com/dev/key/app")))
     })
-    if (aboutDialog) InfoDialog("博物馆探索", "195 件永禁出境文物\n本地记录版\n版本 0.3.0\n\n城市、照片、感想和收集记录默认保存在本机。地图服务需要用户自行配置高德 Key。") { aboutDialog = false }
+    if (aboutDialog) InfoDialog("博物馆探索", "195 件永禁出境文物\n本地记录版\n版本 0.5.1\n\n城市、照片、感想和收集记录默认保存在本机。地图服务需要用户自行配置高德 Key。") { aboutDialog = false }
     if (protocolDialog) InfoDialog("隐私与协议", "本应用的打卡、照片和感想默认只保存在本机。高德地图仅在用户配置 Key 并打开地图时使用网络服务，具体数据处理以高德地图服务协议和隐私政策为准。\n\nWikimedia Commons 图片按数据中的许可信息使用。") { protocolDialog = false }
 }
 
@@ -254,21 +311,55 @@ private fun LoadingScreen() {
 @Composable
 private fun CollectionScreen(repository: MuseumRepository, revision: Int, onRelicClick: (Relic) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
-    val relics = remember(repository, revision, query) {
-        repository.relics().filter { query.isBlank() || it.name.contains(query) || it.museum.contains(query) }
+    var filter by rememberSaveable { mutableStateOf(CollectionFilter.All) }
+    var filterMenu by remember { mutableStateOf(false) }
+    val relics = remember(repository, revision, query, filter) {
+        repository.relics().filter { relic ->
+            val matchesQuery = query.isBlank() || relic.name.contains(query) || relic.museum.contains(query)
+            val matchesFilter = when (filter) {
+                CollectionFilter.All -> true
+                CollectionFilter.Collected -> repository.isCollected(relic.id)
+                CollectionFilter.Uncollected -> !repository.isCollected(relic.id)
+            }
+            matchesQuery && matchesFilter
+        }
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         PageHeader("THE COLLECTION · 195", "国宝总览", "把 195 件永禁出境文物，放进自己的清单里。")
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(query, { query = it }, Modifier.weight(1f), placeholder = { Text("搜索国宝") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = RoundedCornerShape(16.dp))
             Spacer(Modifier.width(8.dp))
-            Button(onClick = {}, shape = RoundedCornerShape(16.dp), contentPadding = PaddingValues(horizontal = 16.dp)) { Text("筛选") }
+            Box {
+                Button(
+                    onClick = { filterMenu = true },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                    contentPadding = PaddingValues(horizontal = 13.dp),
+                ) { Text(if (filter == CollectionFilter.All) "筛选" else filter.shortLabel, color = Color.White, maxLines = 1) }
+                DropdownMenu(expanded = filterMenu, onDismissRequest = { filterMenu = false }) {
+                    CollectionFilter.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.label) },
+                            onClick = {
+                                filter = option
+                                filterMenu = false
+                            },
+                        )
+                    }
+                }
+            }
         }
-        Text("全部国宝    ${repository.collectedCount()} / 195 已收集", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(20.dp, 18.dp, 20.dp, 8.dp))
+        Text("${filter.label}    ${relics.size} 件 · ${repository.collectedCount()} / 195 已收集", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(20.dp, 18.dp, 20.dp, 8.dp))
         LazyVerticalGrid(columns = GridCells.Fixed(2), contentPadding = PaddingValues(14.dp, 0.dp, 14.dp, 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
             items(relics, key = { it.id }) { relic -> RelicCard(relic, repository.isCollected(relic.id), onRelicClick) }
         }
     }
+}
+
+private enum class CollectionFilter(val label: String, val shortLabel: String) {
+    All("全部国宝", "全部"),
+    Collected("已收集国宝", "已收集"),
+    Uncollected("未收集国宝", "未收集"),
 }
 
 @Composable
@@ -296,31 +387,91 @@ private fun RelicCard(relic: Relic, collected: Boolean, onClick: (Relic) -> Unit
 
 @Composable
 private fun RelicImage(relic: Relic, modifier: Modifier) {
+    val context = LocalContext.current
+    val imageLoader = remember(context) { MuseumImageLoaderHolder.get(context) }
+    val model = relic.localImage?.let { "file:///android_asset/$it" } ?: relic.image
     Box(modifier.clip(RoundedCornerShape(14.dp)).background(placeholderBrush(relic.id)), contentAlignment = Alignment.Center) {
-        if (relic.image != null) AsyncImage(model = ImageRequest.Builder(LocalContext.current).data(relic.image).crossfade(true).build(), contentDescription = relic.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        else Text("实物照片", color = Color.White, style = MaterialTheme.typography.titleMedium)
+        Text("实物照片", color = Color.White, style = MaterialTheme.typography.titleMedium)
+        if (!model.isNullOrBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(model)
+                    .crossfade(false)
+                    .listener(onError = { _, result -> Log.w("MuseumImage", "Failed to load $model", result.throwable) })
+                    .build(),
+                imageLoader = imageLoader,
+                contentDescription = relic.name,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RelicDetailScreen(repository: MuseumRepository, viewModel: MuseumViewModel, relic: Relic, onBack: () -> Unit, onRecord: () -> Unit, onMap: () -> Unit) {
+private fun RelicDetailScreen(
+    repository: MuseumRepository,
+    viewModel: MuseumViewModel,
+    relic: Relic,
+    revision: Int,
+    onBack: () -> Unit,
+    onOpenMuseumRecord: (String, String) -> Unit,
+    onMap: () -> Unit,
+) {
     val collected = repository.isCollected(relic.id)
+    val recordedPhotos = remember(revision, relic.id) { repository.photosForRelic(relic.id) }
+    val primaryMuseum = remember(relic.id) { repository.primaryMuseum(relic) }
+    val galleryImages = remember(relic.localImage, relic.image, recordedPhotos) {
+        buildList {
+            (relic.localImage?.let { "file:///android_asset/$it" } ?: relic.image)?.let { model ->
+                add(GalleryImage(model, "官方资料图", relic.name))
+            }
+            recordedPhotos.forEach { photo ->
+                add(GalleryImage(File(photo.path), "我的照片", relic.name))
+            }
+        }
+    }
+    var viewerImage by remember { mutableStateOf<GalleryImage?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).background(MaterialTheme.colorScheme.background)) {
         PageHeader("‹ 返回国宝总览", relic.name, "${relic.era} · ${relic.category}", onBack)
-        RelicImage(relic, Modifier.fillMaxWidth().height(230.dp).padding(horizontal = 22.dp))
+        if (galleryImages.isNotEmpty()) {
+            RelicImageCarousel(galleryImages, Modifier.padding(horizontal = 22.dp)) { viewerImage = it }
+        } else {
+            RelicImage(relic, Modifier.fillMaxWidth().height(230.dp).padding(horizontal = 22.dp))
+        }
+        if (recordedPhotos.isNotEmpty()) {
+            Text(
+                "你的 ${recordedPhotos.size} 张照片已加入上方轮播",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 22.dp, vertical = 8.dp),
+            )
+        }
         SectionLabel("为什么不能出境")
         Text(relic.reason, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 22.dp))
         LocationCard(relic, repository, onMap)
-        Button(onClick = onMap, modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp), shape = RoundedCornerShape(14.dp)) { Text("在地图中查看位置   ›") }
+        Button(
+            onClick = onMap,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+        ) { Text("查看地图", color = Color.White) }
         SectionLabel("完整故事")
         Text(relic.story, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 22.dp))
         Row(Modifier.fillMaxWidth().padding(22.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(onClick = { viewModel.setCollected(relic.id, !collected) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) { Text(if (collected) "已收集 · 取消收集" else "标记为已收集") }
-            Button(onClick = onRecord, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) { Text("照片与感想") }
+            OutlinedButton(onClick = { viewModel.setCollected(relic.id, !collected) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) { Text(if (collected) "取消收集" else "收集") }
+            Button(
+                onClick = { onOpenMuseumRecord(relic.city, primaryMuseum) },
+                enabled = primaryMuseum.isNotBlank(),
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                contentPadding = PaddingValues(horizontal = 8.dp),
+            ) { Text("去博物馆记录", color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
         Spacer(Modifier.height(24.dp))
     }
+    ImageViewerDialog(viewerImage) { viewerImage = null }
 }
 
 @Composable
@@ -366,22 +517,89 @@ private fun MuseumRow(repository: MuseumRepository, city: String, museum: String
 }
 
 @Composable
-private fun MuseumDetailScreen(repository: MuseumRepository, viewModel: MuseumViewModel, city: String, museum: String, navController: NavHostController) {
+private fun MuseumDetailScreen(
+    repository: MuseumRepository,
+    viewModel: MuseumViewModel,
+    city: String,
+    museum: String,
+    revision: Int,
+    navController: NavHostController,
+) {
     val info = repository.museums()[museum]
-    val relics = repository.relicsForMuseum(city, museum)
+    val relics = remember(city, museum) { repository.relicsForMuseum(city, museum) }
+    val record = remember(revision, museum) { repository.museumRecord(museum) }
+    val relicNames = remember(relics) { relics.associate { it.id to it.name } }
     val visited = repository.isVisited(museum)
-    val hero = relics.firstOrNull()
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).background(MaterialTheme.colorScheme.background)) {
-        PageHeader("${city.uppercase(Locale.getDefault())} · VISIT", museum, "$city · ${repository.relicCount(museum)} 件永禁文物 · ${if (visited) "已去过" else "准备出发"}") { navController.popBackStack() }
-        if (hero != null) RelicImage(hero, Modifier.fillMaxWidth().height(220.dp).padding(horizontal = 14.dp))
-        InfoCard(info, city)
-        SectionLabel("关于这座博物馆")
-        Text(info?.intro ?: "$museum 收藏了本次主线中的 ${repository.relicCount(museum)} 件永禁出境文物。建议出发前查看官方开放公告，并预留足够时间参观。", modifier = Modifier.padding(horizontal = 22.dp), style = MaterialTheme.typography.bodyLarge)
-        Button(onClick = { viewModel.setVisited(museum, !visited) }, modifier = Modifier.fillMaxWidth().padding(18.dp), shape = RoundedCornerShape(14.dp)) { Text(if (visited) "已打卡 · 取消打卡" else "我想去 / 标记已去") }
-        Text("馆藏国宝", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-        relics.forEach { relic -> RelicCard(relic, repository.isCollected(relic.id)) { navController.navigate("relic/${relic.id}") }; Spacer(Modifier.height(10.dp)) }
-        Spacer(Modifier.height(20.dp))
+    val hero = remember(relics) { relics.firstOrNull { !it.localImage.isNullOrBlank() || !it.image.isNullOrBlank() } ?: relics.firstOrNull() }
+    var showRecordSheet by rememberSaveable(museum) { mutableStateOf(false) }
+    var viewerImage by remember { mutableStateOf<GalleryImage?>(null) }
+    val heroImage = hero?.let {
+        GalleryImage(it.localImage?.let { local -> "file:///android_asset/$local" } ?: it.image ?: return@let null, "官方资料图", it.name)
     }
+
+    LazyColumn(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        item {
+            PageHeader("${city.uppercase(Locale.getDefault())} · VISIT", museum, "$city · ${repository.relicCount(museum)} 件永禁文物 · ${if (visited) "已去过" else "准备出发"}") { navController.popBackStack() }
+        }
+        if (heroImage != null) {
+            item {
+                RelicImageCarousel(listOf(heroImage), Modifier.padding(horizontal = 14.dp)) { viewerImage = it }
+            }
+        }
+        item { InfoCard(info, city) }
+        item { SectionLabel("关于这座博物馆") }
+        item {
+            Text(
+                info?.intro ?: "$museum 收藏了本次主线中的 ${repository.relicCount(museum)} 件永禁出境文物。建议出发前查看官方开放公告，并预留足够时间参观。",
+                modifier = Modifier.padding(horizontal = 22.dp),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+        item {
+            Button(
+                onClick = { viewModel.setVisited(museum, !visited) },
+                modifier = Modifier.fillMaxWidth().padding(18.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+            ) { Text(if (visited) "取消打卡" else "标记已去", color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+        item { SectionLabel("我的记录") }
+        item {
+            MuseumVisitRecordSection(
+                record = record,
+                relicNames = relicNames,
+                onEdit = { showRecordSheet = true },
+                onPhotoClick = { photo ->
+                    val relicName = photo.relicId?.let(relicNames::get)
+                    viewerImage = GalleryImage(
+                        model = File(photo.path),
+                        title = "我的照片",
+                        subtitle = relicName?.let { "关联：$it" } ?: "未关联国宝",
+                    )
+                },
+            )
+        }
+        item { SectionLabel("馆藏国宝") }
+        items(relics, key = { it.id }) { relic ->
+            RelicCard(relic, repository.isCollected(relic.id)) { navController.navigate("relic/${relic.id}") }
+            Spacer(Modifier.height(10.dp))
+        }
+        item { Spacer(Modifier.height(20.dp)) }
+    }
+
+    if (showRecordSheet) {
+        VisitRecordSheet(
+            museum = museum,
+            relics = relics,
+            initialRecord = record,
+            presetRelicId = null,
+            repository = repository,
+            onSave = { note, photos -> viewModel.saveMuseumRecord(museum, note, photos) },
+            onDismiss = { showRecordSheet = false },
+        )
+    }
+    ImageViewerDialog(viewerImage) { viewerImage = null }
 }
 
 @Composable
@@ -391,6 +609,8 @@ private fun InfoCard(info: MuseumInfo?, city: String) {
             Text("时间   ${info?.openingHours ?: "每天 9:00—17:00 · 以馆方公告为准"}")
             Text("地址   ${info?.address ?: "$city · 具体地址待补充"}")
             Text("预约   ${info?.reservation ?: "以馆方当日公告为准"}")
+            info?.miniProgram?.let { Text("小程序   $it") }
+            info?.wikiUrl?.let { Text("资料   Wikipedia") }
         }
     }
 }
@@ -403,7 +623,15 @@ private fun MapScreen(repository: MuseumRepository, viewModel: MuseumViewModel, 
         PageHeader("EXPLORE / MAP", "去哪里看国宝", if (selectedCity.isEmpty()) "绿色是走过的地方，朱砂色是下一站。" else "$selectedCity · 博物馆地图")
         if (key.isBlank()) {
             Card(Modifier.fillMaxWidth().padding(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(18.dp)) {
-                Column(Modifier.padding(18.dp)) { Text("地图需要高德 Android Key", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text("Key 只保存在本机，不会上传。请到“更多”里申请和保存。", modifier = Modifier.padding(top = 8.dp)); Button(onClick = { navController.navigate("more") }, modifier = Modifier.padding(top = 12.dp)) { Text("去更多设置") } }
+                Column(Modifier.padding(18.dp)) {
+                    Text("地图需要高德 Android Key", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Key 只保存在本机，不会上传。请到“更多”里申请和保存。", modifier = Modifier.padding(top = 8.dp))
+                    Button(
+                        onClick = { navController.navigate("more") },
+                        modifier = Modifier.padding(top = 12.dp),
+                        colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                    ) { Text("去更多设置", color = Color.White) }
+                }
             }
         } else {
             AmapView(repository, selectedCity, key, Modifier.fillMaxWidth().height(280.dp))
@@ -468,7 +696,7 @@ private fun MoreScreen(repository: MuseumRepository, onMapKey: () -> Unit, onOpe
         SettingsRow("导出备份", "保存照片、打卡和感想", Icons.Outlined.UploadFile, onExport)
         SettingsRow("导入备份", "从 ZIP 恢复本机记录", Icons.Outlined.CollectionsBookmark, onImport)
         SectionLabel("关于")
-        SettingsRow("关于与更新", "版本 0.3.0 · 检查更新", Icons.Outlined.Info, onAbout)
+        SettingsRow("关于与更新", "版本 0.5.1 · 检查更新", Icons.Outlined.Info, onAbout)
         SettingsRow("隐私与协议", "本地存储说明、第三方服务协议", Icons.Outlined.Policy, onProtocol)
         Spacer(Modifier.height(20.dp))
     }
@@ -481,21 +709,6 @@ private fun SettingsRow(title: String, subtitle: String, icon: androidx.compose.
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RecordSheet(relic: Relic, repository: MuseumRepository, viewModel: MuseumViewModel, onPickPhoto: () -> Unit, onDismiss: () -> Unit) {
-    var note by remember { mutableStateOf(repository.note(relic.id)) }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.fillMaxWidth().padding(22.dp, 4.dp, 22.dp, 28.dp)) {
-            Text("记录这件国宝", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text("把这一刻留给这件国宝", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
-            OutlinedTextField(note, { note = it }, Modifier.fillMaxWidth().height(140.dp).padding(top = 14.dp), placeholder = { Text("写下此刻的想法或心情") }, shape = RoundedCornerShape(14.dp))
-            OutlinedButton(onClick = onPickPhoto, modifier = Modifier.fillMaxWidth().padding(top = 10.dp), shape = RoundedCornerShape(14.dp)) { Icon(Icons.Outlined.PhotoLibrary, null); Spacer(Modifier.width(8.dp)); Text(if (repository.lastPhoto().isBlank()) "添加照片" else "已选择照片") }
-            Button(onClick = { viewModel.saveNote(relic.id, note); onDismiss() }, modifier = Modifier.fillMaxWidth().padding(top = 14.dp), shape = RoundedCornerShape(14.dp)) { Text("保存记录") }
-        }
-    }
-}
-
 @Composable
 private fun MapKeyDialog(current: String, onSave: (String) -> Unit, onDismiss: () -> Unit, onOpenConsole: () -> Unit) {
     var key by remember { mutableStateOf(current) }
@@ -505,7 +718,12 @@ private fun MapKeyDialog(current: String, onSave: (String) -> Unit, onDismiss: (
 @Composable
 private fun InfoDialog(title: String, message: String, onDismiss: () -> Unit) { AlertDialog(onDismissRequest = onDismiss, title = { Text(title) }, text = { Text(message) }, confirmButton = { TextButton(onClick = onDismiss) { Text("知道了") } }) }
 
-private fun navigateTab(navController: NavHostController, route: String) { navController.navigate(route) { popUpTo("collection") { saveState = true }; launchSingleTop = true; restoreState = true } }
+private fun navigateTab(navController: NavHostController, route: String) {
+    navController.navigate(route) {
+        popUpTo(navController.graph.startDestinationId) { saveState = false }
+        launchSingleTop = true
+    }
+}
 private fun destinationIcon(index: Int) = when (index) { 0 -> Icons.Outlined.CollectionsBookmark; 1 -> Icons.Outlined.Map; else -> Icons.Outlined.MoreHoriz }
 private fun placeholderBrush(id: Int): Brush {
     val palettes = listOf(

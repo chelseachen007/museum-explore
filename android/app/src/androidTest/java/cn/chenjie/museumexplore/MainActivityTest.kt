@@ -26,6 +26,9 @@ class MainActivityTest {
 
     @Test
     fun collectionScreenCanCaptureScreenshot() {
+        composeRule.waitUntil(10_000) {
+            composeRule.onAllNodesWithText("国宝总览").fetchSemanticsNodes().isNotEmpty()
+        }
         val image = composeRule.onNodeWithText("国宝总览").captureToImage()
         assertTrue(image.width > 0)
         assertTrue(image.height > 0)

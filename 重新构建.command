@@ -35,14 +35,24 @@ cd "$ROOT/tools" || exit 1
 echo ""
 echo "  博物馆探索 · 重新构建"
 echo "  ────────────────────────────────────"
-echo "  1/3  数据（195 件 + 照片回填）"
+echo "  1/5  数据（195 件 + 照片回填）"
 "$PY" build.py || { echo ""; echo "  构建失败，已停止。"; read -n 1 -s; exit 1; }
 echo ""
-echo "  2/3  全国 195 件页"
-"$PY" build_html.py || { echo ""; echo "  构建失败，已停止。"; read -n 1 -s; exit 1; }
+echo "  2/5  馆级资料"
+"$PY" build_museums.py || { echo ""; echo "  构建失败，已停止。"; read -n 1 -s; exit 1; }
 echo ""
-echo "  3/3  杭州页"
+echo "  3/5  清洗 JSON 文本"
+"$PY" text_clean.py || { echo ""; echo "  构建失败，已停止。"; read -n 1 -s; exit 1; }
+echo ""
+echo "  4/5  下载外链图片并同步 Android 资源"
+"$PY" localize_assets.py || { echo ""; echo "  图片下载失败，可重跑本脚本继续。"; read -n 1 -s; exit 1; }
+echo ""
+echo "  5/5  全国 195 件页与杭州页"
+"$PY" build_html.py || { echo ""; echo "  构建失败，已停止。"; read -n 1 -s; exit 1; }
 "$PY" build_hz.py || { echo ""; echo "  构建失败，已停止。"; read -n 1 -s; exit 1; }
+echo ""
+echo "  校验中……"
+"$PY" validate_data.py || { echo ""; echo "  数据校验失败，已停止。"; read -n 1 -s; exit 1; }
 echo ""
 echo "  ────────────────────────────────────"
 echo "  完成。双击「启动博物馆探索.command」查看。"

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json, os, sys
+from urllib.parse import quote
 # 全部路径相对脚本自身定位，整个工作区搬到哪里都能跑
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
@@ -27,6 +28,10 @@ for it in data['items']:
     it['catMain'] = CAT_MAP.get(it['cat'], '文献杂项')
     it['art'] = art_svg(it['catMain'], 92)
     it['artColor'] = art_color(it['catMain'])
+    image = it.get('image') or ''
+    if image.startswith('relic_images/'):
+        # 页面和图片放在同一目录，用相对路径即可离线打开。
+        it['image'] = quote(image, safe='/')
 
 payload = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
 

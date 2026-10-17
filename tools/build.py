@@ -6,6 +6,7 @@ sys.path.insert(0, _HERE)
 from data_part1 import PART1
 from data_part2 import PART2
 from common import site_of
+from text_clean import clean_tree
 
 OUT = os.path.dirname(_HERE)          # 工作区根目录（tools 的上一级）
 
@@ -46,8 +47,8 @@ data = {
         "law": "《中华人民共和国文物保护法实施条例》第四十九条：一级文物中的孤品和易损品，禁止出境展览。禁止出境展览文物的目录，由国务院文物行政主管部门定期公布。",
         "media": {
             "note": "每条文物的影像为可选字段，前端按 model → image → 类别示意图 三级回退渲染。",
-            "model": "3D 模型 URL（glTF/GLB），留空则不渲染 3D。渲染为 <model-viewer>，可拖拽旋转、点击放大。",
-            "image": "实物照片 URL。来源：Wikimedia Commons（经 Wikidata P18 属性匹配），均为公有领域或 CC 授权，需保留署名。留空则用类别示意图。",
+            "model": "3D 模型 URL（glTF/GLB），留空则不渲染 3D。前端用 model-viewer 组件渲染，可拖拽旋转、点击放大。",
+            "image": "实物照片的本地相对路径（relic_images/<id>.<ext>）。来源：Wikimedia Commons（经 Wikidata P18 属性匹配），均为公有领域或 CC 授权，需保留署名。留空则用类别示意图。",
             "imageCredit": "照片署名信息：license / author / page（Commons 文件页）/ qid（Wikidata 实体）。",
             "catArt": "类别示意图由 catMain 字段映射，共 11 类：青铜器/陶瓷/玉器/书画/漆木器/丝织刺绣/壁画石刻/金银器/文献杂项/画像砖/陶器。"
         },
@@ -78,6 +79,28 @@ def clean(s, n=90):
 
 CACHE = os.path.join(_HERE, 'wd_cache.json')
 MANUAL_IMAGES = os.path.join(_HERE, 'commons_manual.json')
+WIKI_IMPORT = os.path.join(_HERE, 'wiki_import.json')
+LOCAL_IMAGES = os.path.join(_HERE, 'local_images.json')
+EXISTING_DATA = os.path.join(OUT, '195件永禁文物.json')
+
+# 本地图片索引优先级最高：它由 tools/localize_assets.py 生成，
+# 记录已经下载到 relic_images/ 的离线图片，重建数据时不能被外链覆盖。
+local_images = {}
+if os.path.exists(LOCAL_IMAGES):
+    try:
+        local_images = json.load(open(LOCAL_IMAGES, encoding='utf-8')).get('images') or {}
+    except Exception:
+        local_images = {}
+
+existing_local = {}
+if os.path.exists(EXISTING_DATA):
+    try:
+        for old in json.load(open(EXISTING_DATA, encoding='utf-8')).get('items', []):
+            old_image = old.get('image') or ''
+            if old_image.startswith('relic_images/'):
+                existing_local[old['name']] = old_image
+    except Exception:
+        existing_local = {}
 
 # 已知错配：缓存键 → 被匹配到的 Wikidata 实体。宁可不出图，也不能张冠李戴。
 BAD_MATCH = {
@@ -221,6 +244,39 @@ if os.path.exists(CACHE):
         if manual_fill_n:
             print(f"  Commons 搜索补充生效 {manual_fill_n} 条")
 
+    if os.path.exists(WIKI_IMPORT):
+        wiki_import = json.load(open(WIKI_IMPORT, encoding='utf-8')).get('items', {})
+        byname = {r['name']: r for r in rows}
+        wiki_fill_n = 0
+        wiki_image_n = 0
+        for name, spec in wiki_import.items():
+            r = byname.get(name)
+            if not r:
+                continue
+            if spec.get('image'):
+                r['image'] = spec['image']
+                r['imageCredit'] = spec.get('imageCredit')
+                wiki_image_n += 1
+            if spec.get('wikiUrl'):
+                r['wikiUrl'] = spec['wikiUrl']
+            if spec.get('museumWikiUrl'):
+                r['museumWikiUrl'] = spec['museumWikiUrl']
+            wiki_fill_n += 1
+        if wiki_fill_n:
+            print(f"  维基百科表格导入 {wiki_fill_n} 条，图片 {wiki_image_n} 条")
+
+    # 本地图片兜底：优先使用 localize_assets.py 生成的索引，
+    # 其次保留上一次构建已经落到 relic_images/ 的图片。
+    local_fill_n = 0
+    for r in rows:
+        local = local_images.get(r['name']) or existing_local.get(r['name'])
+        if local and os.path.exists(os.path.join(OUT, local)):
+            if r.get('image') != local:
+                r['image'] = local
+                local_fill_n += 1
+    if local_fill_n:
+        print(f"  本地图片兜底 {local_fill_n} 条")
+
     print(f"实物照片回填: {filled + manual_n}/{len(rows)} 件（其余用类别示意图）")
     if bad:
         print(f"  已拦截错配 {len(bad)} 条: {', '.join(bad)}")
@@ -230,8 +286,10 @@ if os.path.exists(CACHE):
             print(f"    {n}  ({w}x{h}, 比 {w/h:.1f})")
     print(f"  未匹配 {len(unmatched)} 条")
 
+data = clean_tree(data)
 with open(os.path.join(OUT, '195件永禁文物.json'), 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=1)
+    f.write('\n')
 
 # 统计
 from collections import Counter

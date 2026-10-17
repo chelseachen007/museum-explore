@@ -1,7 +1,9 @@
 .toolchain/
 android/.gradle/
+android/.gradle-stale-java24/
 android/local.properties
 android/build/
 android/app/build/
+博迹-*-debug.apk
 **/__pycache__/
 *.pyc

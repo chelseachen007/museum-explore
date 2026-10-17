@@ -6,11 +6,14 @@
 import json
 import os
 
+from text_clean import clean_tree
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 ITEMS_FILE = os.path.join(ROOT, '195件永禁文物.json')
 OUTPUT_FILE = os.path.join(ROOT, 'museums.json')
 OVERRIDES_FILE = os.path.join(HERE, 'museum_overrides.json')
+WIKI_IMPORT_FILE = os.path.join(HERE, 'wiki_import.json')
 
 with open(ITEMS_FILE, encoding='utf-8') as f:
     items = json.load(f)['items']
@@ -23,6 +26,11 @@ overrides = {}
 if os.path.exists(OVERRIDES_FILE):
     with open(OVERRIDES_FILE, encoding='utf-8') as f:
         overrides = json.load(f)
+wiki_museums = {}
+if os.path.exists(WIKI_IMPORT_FILE):
+    for record in json.load(open(WIKI_IMPORT_FILE, encoding='utf-8')).get('items', {}).values():
+        if record.get('museum') and record.get('museumWikiUrl'):
+            wiki_museums[record['museum']] = record['museumWikiUrl']
 
 groups = {}
 for item in items:
@@ -49,6 +57,10 @@ for item in items:
     if museum in overrides:
         group.update(overrides[museum])
         group['name'] = museum
+    if museum in wiki_museums:
+        group['wikiUrl'] = wiki_museums[museum]
+        if wiki_museums[museum] not in group.get('sources', []):
+            group.setdefault('sources', []).append(wiki_museums[museum])
     if not group['officialUrl'] and item.get('museumUrl'):
         group['officialUrl'] = item['museumUrl']
     if item.get('museumUrl') and item['museumUrl'] not in group.get('sources', []):
@@ -74,6 +86,7 @@ data = {
     'museums': sorted(groups.values(), key=lambda x: (x.get('province') or '', x['name'])),
 }
 
+data = clean_tree(data)
 with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
     f.write('\n')

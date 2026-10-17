@@ -8,8 +8,8 @@ android { namespace 'cn.chenjie.museumexplore'; compileSdk 35
         applicationId 'cn.chenjie.museumexplore'
         minSdk 29
         targetSdk 35
-        versionCode 3
-        versionName '0.3.0'
+        versionCode 6
+        versionName '0.5.1'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     buildFeatures { compose true }
@@ -24,6 +24,7 @@ android { namespace 'cn.chenjie.museumexplore'; compileSdk 35
 dependencies {
     implementation platform('androidx.compose:compose-bom:2024.09.03')
     implementation 'androidx.activity:activity-compose:1.9.2'
+    implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.ui:ui-tooling-preview'
     implementation 'androidx.compose.foundation:foundation'

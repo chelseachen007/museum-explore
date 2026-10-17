@@ -14,7 +14,19 @@
 
 生成文件：`app/build/outputs/apk/debug/app-debug.apk`
 
-当前开发版已接入城市/博物馆浏览、打卡、感想、照片选择、文物手动收集和 ZIP 记录备份入口。当前 ZIP 保存记录和照片 URI 引用；数据仍使用兼容现有版本的 SharedPreferences。
+当前 0.5.1 开发版已接入城市/博物馆浏览、打卡、博物馆级感想、拍照/相册多图、照片关联国宝、国宝多图轮播、全图缩放查看和 ZIP 记录备份。照片会复制到应用内部目录，备份 ZIP 同时包含照片文件；记录与设置仍使用兼容现有版本的 SharedPreferences。
+
+文物图片已全部下载到根目录 `relic_images/`，并同步到 `app/src/main/assets/relic_images/`；数据里的 `image` 字段只保存本地相对路径，详情页和列表离线也能显示实物照片。详情页展示字段在读取数据时仍会再清理一次 HTML 标签、实体和引用标记。
+
+如果更新了文物数据或图片，先回到项目根目录执行：
+
+```sh
+python3 tools/text_clean.py
+python3 tools/localize_assets.py
+python3 tools/validate_data.py
+```
+
+再执行 Android 构建，确保外链图片已落到本地、文本没有 HTML 残留。
 
 ## 验证
 

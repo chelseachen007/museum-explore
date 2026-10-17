@@ -10,9 +10,23 @@ data class Relic(
     val reason: String,
     val story: String,
     val image: String?,
+    val localImage: String?,
     val museumUrl: String?,
     val museumWechat: String?,
 )
+
+data class VisitPhoto(
+    val path: String,
+    val relicId: Int? = null,
+)
+
+data class MuseumRecord(
+    val note: String = "",
+    val photos: List<VisitPhoto> = emptyList(),
+    val updatedAt: Long = 0L,
+) {
+    val isEmpty: Boolean get() = note.isBlank() && photos.isEmpty()
+}
 
 data class MuseumInfo(
     val name: String,
@@ -23,6 +37,8 @@ data class MuseumInfo(
     val intro: String?,
     val openingHours: String?,
     val reservation: String?,
+    val wikiUrl: String?,
+    val miniProgram: String?,
 )
 
 data class CitySummary(

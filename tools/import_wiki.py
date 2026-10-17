@@ -21,6 +21,10 @@ OUTPUT_FILE = os.path.join(HERE, 'wiki_import.json')
 API = 'https://zh.wikipedia.org/w/api.php'
 WIKI_BASE = 'https://zh.wikipedia.org'
 COMMONS_BASE = 'https://commons.wikimedia.org/wiki/File:'
+NAME_ALIASES = {
+    '晋侯稣钟 （一套14件）': '晋侯苏钟（一套 16 件，14 件在上博、2 件在山西博物院）',
+    '西周 㝬 簋': '西周害夫簋（胡簋）',
+}
 
 def fetch_page():
     params = urllib.parse.urlencode({
@@ -32,7 +36,7 @@ def fetch_page():
 
 def norm(value):
     value = html.unescape(value or '')
-    value = value.replace('長', '长').replace('紗', '纱').replace('褝', '禅')
+    value = value.replace('長', '长').replace('紗', '纱').replace('褝', '禅').replace('稣', '苏')
     value = re.sub(r'[“”‘’「」《》〈〉（）()【】\[\]、，。,.;；:：·・\s_\-—]', '', value)
     return value.lower()
 
@@ -40,6 +44,8 @@ def text(node):
     return ' '.join(node.get_text(' ', strip=True).split()) if node else ''
 
 def match_name(wiki_name, names):
+    if wiki_name in NAME_ALIASES:
+        return NAME_ALIASES[wiki_name]
     key = norm(wiki_name)
     exact = [name for name in names if norm(name) == key]
     if exact:
@@ -47,7 +53,7 @@ def match_name(wiki_name, names):
     candidates = []
     for name in names:
         other = norm(name)
-        if len(key) >= 5 and (key in other or other in key):
+        if len(key) >= 2 and (key in other or other in key):
             candidates.append((min(len(key), len(other)), name))
     if candidates:
         return max(candidates)[1]
@@ -78,9 +84,7 @@ for table in soup.find_all('table'):
         if not cells:
             continue
         title_link = cells[0].find('a', href=re.compile(r'^/wiki/'))
-        if not title_link:
-            continue
-        wiki_name = text(title_link)
+        wiki_name = text(cells[0])
         item_name = match_name(wiki_name, names)
         if not item_name:
             unmatched.append(wiki_name)
@@ -88,10 +92,12 @@ for table in soup.find_all('table'):
 
         links = row.find_all('a', href=re.compile(r'^/wiki/'))
         linked_museum = None
+        linked_museum_url = None
         for link in links:
             candidate = text(link)
             if norm(candidate) in museum_names:
                 linked_museum = museum_names[norm(candidate)]
+                linked_museum_url = WIKI_BASE + link.get('href', '')
                 break
         if linked_museum:
             current_museum = linked_museum
@@ -103,9 +109,12 @@ for table in soup.find_all('table'):
             if '/wiki/File:' in href:
                 file_name = urllib.parse.unquote(href.split('/wiki/File:', 1)[1])
 
-        record = {'wikiName': wiki_name, 'wikiUrl': WIKI_BASE + title_link.get('href', '')}
+        record = {'wikiName': wiki_name,
+                  'wikiUrl': WIKI_BASE + title_link.get('href', '') if title_link else ''}
         if current_museum:
             record['museum'] = current_museum
+        if linked_museum_url:
+            record['museumWikiUrl'] = linked_museum_url
         if file_name:
             record['file'] = file_name
             encoded = urllib.parse.quote(file_name.replace(' ', '_'), safe='')

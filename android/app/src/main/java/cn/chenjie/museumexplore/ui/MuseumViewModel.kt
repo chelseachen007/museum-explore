@@ -3,6 +3,7 @@ package cn.chenjie.museumexplore.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import cn.chenjie.museumexplore.data.MuseumRepository
+import cn.chenjie.museumexplore.model.VisitPhoto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +17,10 @@ class MuseumViewModel(application: Application) : AndroidViewModel(application) 
     fun setCollected(id: Int, value: Boolean) { repository.setCollected(id, value); refresh() }
     fun setVisited(name: String, value: Boolean) { repository.setVisited(name, value); refresh() }
     fun saveNote(id: Int, value: String) { repository.saveNote(id, value); refresh() }
+    fun saveMuseumRecord(museum: String, note: String, photos: List<VisitPhoto>) {
+        repository.saveMuseumRecord(museum, note, photos)
+        refresh()
+    }
     fun saveMapKey(value: String) { repository.saveMapKey(value); refresh() }
     fun saveLastPhoto(value: String) { repository.saveLastPhoto(value); refresh() }
 }
