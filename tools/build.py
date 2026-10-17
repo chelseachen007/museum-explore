@@ -6,7 +6,7 @@ sys.path.insert(0, _HERE)
 from data_part1 import PART1
 from data_part2 import PART2
 from common import site_of
-from text_clean import clean_tree
+from text_clean import clean_document
 
 OUT = os.path.dirname(_HERE)          # 工作区根目录（tools 的上一级）
 
@@ -286,7 +286,7 @@ if os.path.exists(CACHE):
             print(f"    {n}  ({w}x{h}, 比 {w/h:.1f})")
     print(f"  未匹配 {len(unmatched)} 条")
 
-data = clean_tree(data)
+data = clean_document(data)
 with open(os.path.join(OUT, '195件永禁文物.json'), 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=1)
     f.write('\n')

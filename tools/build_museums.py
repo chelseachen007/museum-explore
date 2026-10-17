@@ -5,8 +5,9 @@
 """
 import json
 import os
+import re
 
-from text_clean import clean_tree
+from text_clean import clean_document
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -71,6 +72,22 @@ for group in groups.values():
     if any(keyword in group['name'] for keyword in non_museum_keywords):
         group['type'] = 'collection_institution'
 
+
+def concise_intro(text) -> str | None:
+    """把百科长文收成一句，保留事实而非展示性细节。"""
+    if not text:
+        return None
+    sentences = [s.strip() for s in re.split(r"(?<=[。！？])", str(text)) if s.strip()]
+    if not sentences:
+        return None
+    intro = re.sub(r"\s*（\s*", "（", sentences[0])
+    intro = re.sub(r"\s*）", "）", intro)
+    return intro
+
+
+for group in groups.values():
+    group['intro'] = concise_intro(group.get('intro'))
+
 data = {
     'meta': {
         'title': '195 件永禁出境文物收藏机构资料',
@@ -86,7 +103,7 @@ data = {
     'museums': sorted(groups.values(), key=lambda x: (x.get('province') or '', x['name'])),
 }
 
-data = clean_tree(data)
+data = clean_document(data)
 with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
     f.write('\n')

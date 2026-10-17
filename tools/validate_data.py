@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""离线数据校验：图片必须本地、文本不能残留 HTML。"""
+"""离线数据校验：图片必须本地，数据文本不能混入 HTML、CSS 或坐标。"""
 from __future__ import annotations
 
 import json
@@ -20,6 +20,20 @@ ANDROID_IMAGE_DIR = ANDROID_ASSETS / "relic_images"
 SUSPICIOUS = re.compile(
     r"(?i)<[a-z!/][^>]{0,200}>|&(?:lt|gt|nbsp|quot|#\d+|#x[0-9a-f]+);"
 )
+SCRAPING_RESIDUE = re.compile(
+    r"\.mw-parser-output|[\ufeff\u200b\u200c\u200d]"
+    r"|\d{1,3}°\d{1,2}′\d{1,2}(?:\.\d+)?″[NSEW]"
+    r"|-?\d{1,3}(?:\.\d+)?°[NSEW]"
+    r"|\[\s*(?:[A-Za-z]|\d+|(?:注|註|网|網|书|書|來源請求|来源请求|需要引用|需要引证))\s*\d*\s*\]"
+)
+STYLE_LEFTOVER = re.compile(
+    r"(?:font-family|font-size|font-weight|line-height|display|margin|padding|"
+    r"background|border|white-space|list-style)\s*:|"
+    r"\{[^{}]*\}|color\s*:\s*#(?:[0-9a-f]{3,8})\b",
+    re.I,
+)
+COORD_SEMI = re.compile(r"-?\d{1,3}(?:\.\d+)?\s*;\s*-?\d{1,3}(?:\.\d+)?")
+HTML_TAG_LIKE = re.compile(r"(?is)</?[a-z][^>\n]{0,200}>")
 
 
 def load_json(path: Path):
@@ -53,8 +67,20 @@ def image_ok(path: Path) -> bool:
 def check_text(label: str, value) -> list[str]:
     errors: list[str] = []
     for json_path, text in iter_strings(value):
+        if json_path.endswith(("Url", "url", "page", "qid")):
+            continue
+        if "/meta/media/" in json_path:
+            continue
         if SUSPICIOUS.search(text):
             errors.append(f"{label}{json_path}: HTML 残留 {text[:120]!r}")
+        if SCRAPING_RESIDUE.search(text):
+            errors.append(f"{label}{json_path}: 抓取残留 {text[:120]!r}")
+        if STYLE_LEFTOVER.search(text):
+            errors.append(f"{label}{json_path}: 样式残留 {text[:120]!r}")
+        if COORD_SEMI.search(text):
+            errors.append(f"{label}{json_path}: 坐标残留 {text[:120]!r}")
+        if HTML_TAG_LIKE.search(text):
+            errors.append(f"{label}{json_path}: HTML 标签残留 {text[:120]!r}")
     return errors
 
 
@@ -104,6 +130,8 @@ def main() -> int:
     if ANDROID_DATA_FILE.exists():
         android_data = load_json(ANDROID_DATA_FILE)
         android_items = android_data.get("items") or []
+        if android_data.get("meta") != data.get("meta"):
+            errors.append("Android assets 文物元数据与根数据不一致")
         if len(android_items) != len(items):
             errors.append(f"Android assets 文物数量不一致: {len(android_items)} != {len(items)}")
         for root_item, asset_item in zip(items, android_items):
@@ -113,8 +141,15 @@ def main() -> int:
             image = asset_item.get("image")
             if image and not image_ok(ANDROID_IMAGE_DIR / Path(image).name):
                 errors.append(f"{root_item['id']} {root_item['name']}: Android assets 图片缺失 {image}")
+            if asset_item != root_item:
+                errors.append(f"{root_item['id']} {root_item['name']}: Android assets 文本与根数据不一致")
     else:
         errors.append(f"缺少 Android assets 数据: {ANDROID_DATA_FILE}")
+
+    android_museums_file = ANDROID_ASSETS / "museums.json"
+    if android_museums_file.exists() and MUSEUMS_FILE.exists():
+        if load_json(android_museums_file) != load_json(MUSEUMS_FILE):
+            errors.append("Android assets museums.json 与根数据不一致")
 
     for html_name in ("195件永禁文物·博物馆探索.html", "杭州国宝地图.html"):
         html_path = ROOT / html_name
@@ -146,7 +181,7 @@ def main() -> int:
         if len(errors) > 40:
             print(f"  ... 还有 {len(errors) - 40} 项")
         return 1
-    print("校验通过：图片全部本地化，文本无 HTML 残留。")
+    print("校验通过：图片全部本地化，数据无 HTML、CSS 或坐标残留。")
     return 0
 
 

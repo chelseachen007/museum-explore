@@ -38,5 +38,112 @@
     "sources": ["https://www.hnmuseum.com/"],
     "verifiedAt": "2026-10-16",
     "status": "official_source_pending_hours"
+  },
+  "浙江省博物馆": {
+    "intro": "始建于1929年，是浙江规模最大的综合性博物馆。",
+    "address": "孤山馆区：杭州市西湖区孤山路25号；之江馆区：杭州市西湖区碧波路",
+    "openingHours": "各馆区开放时间与闭馆日可能不同，以官方公告为准。",
+    "reservation": "通过浙江省博物馆官方渠道预约，具体以当日公告为准。",
+    "wechat": "浙江省博物馆",
+    "sources": ["https://www.zhejiangmuseum.com"],
+    "verifiedAt": "2026-10-17",
+    "status": "official_source_partial"
+  },
+  "西藏博物馆": {
+    "intro": "位于拉萨市城关区，是西藏第一座具有现代化功能的博物馆。",
+    "address": "拉萨市城关区罗布林卡路19号",
+    "sources": ["https://zh.wikipedia.org/wiki/%E8%A5%BF%E8%97%8F%E5%8D%9A%E7%89%A9%E9%A6%86"],
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "南京大学": {
+    "intro": "位于南京和苏州的综合性大学，校内收藏王齐翰《勘书图》卷等文物。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "新疆维吾尔自治区文物考古研究所": {
+    "intro": "新疆承担全疆文物考古调查、发掘与研究工作的研究机构，隶属新疆维吾尔自治区文化和旅游厅。",
+    "address": "乌鲁木齐市新市区北京南路东二巷3号",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "新疆维吾尔自治区博物馆": {
+    "intro": "位于乌鲁木齐市沙依巴克区，是新疆唯一的自治区级综合博物馆。1959年成立，馆藏涵盖服饰、彩绘泥俑、纺织品与干尸等。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "上海博物馆": {
+    "intro": "上海大型综合性古代艺术博物馆，馆藏逾百万件，以青铜器、陶瓷和书画见长。1952年正式开放，现设人民广场馆与东馆。",
+    "openingHours": "东馆 10:00—18:00，17:00 停止入场；基本陈列免预约。具体以官方公告为准。",
+    "reservation": "通过上海博物馆官方渠道查询预约要求，具体以当日公告为准。",
+    "wechat": "上海博物馆",
+    "sources": ["https://www.shanghaimuseum.net"],
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "安徽博物院": {
+    "intro": "安徽省唯一的省级综合类博物馆，位于合肥，兼有庐阳馆与蜀山馆两个馆区。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "山东博物馆": {
+    "intro": "位于济南的省级综合博物馆，前身为1954年成立的山东省博物馆，2010年更名为现名。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "山东省文物考古研究院": {
+    "intro": "山东省属文物考古研究机构，前身为1980年成立的山东省文物考古研究所。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "天津博物馆": {
+    "intro": "位于天津文化中心的大型历史艺术类综合博物馆，前身为1918年成立的天津博物院。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "三星堆博物馆": {
+    "intro": "位于四川广汉三星堆遗址，以古蜀文明青铜器、金器和玉器为特色，2023年新馆开放。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "成都金沙遗址博物馆": {
+    "intro": "位于成都金沙遗址的大型考古遗址博物馆，以商周古蜀文明的金器、玉器与青铜器为特色。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "宁夏博物馆": {
+    "intro": "宁夏回族自治区省级综合博物馆，馆藏以宁夏地方历史、西夏文物与岩画等为特色。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "杭州市临安区博物馆": {
+    "intro": "位于杭州临安，以吴越国钱氏家族墓出土文物为重要馆藏特色。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "周原博物馆": {
+    "intro": "位于陕西宝鸡扶风、岐山一带的周原遗址，以出土西周青铜器与甲骨闻名。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "法门寺博物馆": {
+    "intro": "依托法门寺唐代地宫遗址建立，以佛指舍利与唐代皇室供奉珍宝为主要馆藏。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "秦始皇帝陵博物院": {
+    "intro": "依托秦始皇陵与兵马俑坑建立，是展示秦代军事、车马与陵寝制度的遗址博物馆。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "安徽省文物考古研究所": {
+    "intro": "安徽省文物考古研究机构，承担省内考古调查、发掘与文物保护研究。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
+  },
+  "辽宁省文物考古研究院": {
+    "intro": "辽宁省文物考古研究机构，承担省内考古调查、发掘与文物保护研究。",
+    "verifiedAt": "2026-10-17",
+    "status": "wiki_collected"
   }
 }

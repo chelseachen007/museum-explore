@@ -41,7 +41,7 @@ ANDROID_IMAGE_DIR = ANDROID_ASSETS / "relic_images"
 ANDROID_DATA_FILE = ANDROID_ASSETS / "195件永禁文物.json"
 ANDROID_MUSEUMS_FILE = ANDROID_ASSETS / "museums.json"
 
-USER_AGENT = "MuseumExplorer/0.5.1 (local offline museum data; Wikimedia Commons)"
+USER_AGENT = "MuseumExplorer/0.5.2 (local offline museum data; Wikimedia Commons)"
 THUMB_WIDTH = 960
 CONTENT_EXT = {
     "image/jpeg": ".jpg",

@@ -161,7 +161,7 @@ internal object MuseumImageLoaderHolder {
                     .addInterceptor { chain ->
                         chain.proceed(
                             chain.request().newBuilder()
-                                .header("User-Agent", "BoJi/0.5.1 (Android museum exploration app)")
+                                .header("User-Agent", "BoJi/0.5.2 (Android museum exploration app)")
                                 .build(),
                         )
                     }
@@ -294,7 +294,7 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
     if (mapKeyDialog) MapKeyDialog(repository.mapKey(), { viewModel.saveMapKey(it); mapKeyDialog = false }, { mapKeyDialog = false }, {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.amap.com/dev/key/app")))
     })
-    if (aboutDialog) InfoDialog("博物馆探索", "195 件永禁出境文物\n本地记录版\n版本 0.5.1\n\n城市、照片、感想和收集记录默认保存在本机。地图服务需要用户自行配置高德 Key。") { aboutDialog = false }
+    if (aboutDialog) InfoDialog("博物馆探索", "195 件永禁出境文物\n本地记录版\n版本 0.5.2\n\n城市、照片、感想和收集记录默认保存在本机。地图服务需要用户自行配置高德 Key。") { aboutDialog = false }
     if (protocolDialog) InfoDialog("隐私与协议", "本应用的打卡、照片和感想默认只保存在本机。高德地图仅在用户配置 Key 并打开地图时使用网络服务，具体数据处理以高德地图服务协议和隐私政策为准。\n\nWikimedia Commons 图片按数据中的许可信息使用。") { protocolDialog = false }
 }
 
@@ -696,7 +696,7 @@ private fun MoreScreen(repository: MuseumRepository, onMapKey: () -> Unit, onOpe
         SettingsRow("导出备份", "保存照片、打卡和感想", Icons.Outlined.UploadFile, onExport)
         SettingsRow("导入备份", "从 ZIP 恢复本机记录", Icons.Outlined.CollectionsBookmark, onImport)
         SectionLabel("关于")
-        SettingsRow("关于与更新", "版本 0.5.1 · 检查更新", Icons.Outlined.Info, onAbout)
+        SettingsRow("关于与更新", "版本 0.5.2 · 检查更新", Icons.Outlined.Info, onAbout)
         SettingsRow("隐私与协议", "本地存储说明、第三方服务协议", Icons.Outlined.Policy, onProtocol)
         Spacer(Modifier.height(20.dp))
     }
