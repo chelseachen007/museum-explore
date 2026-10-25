@@ -189,7 +189,7 @@ object ExplorationOps {
         candidate.isWished && unseenWished > 0 -> "在你的想去清单里，还有 $unseenWished 件你想看的国宝"
         candidate.isWished -> "在你的想去清单里"
         unseenWished > 0 -> "有 $unseenWished 件你想看的国宝"
-        candidate.unseenRelicIds.isNotEmpty() -> "还有 ${candidate.unseenRelicIds.size} 件国宝没看过"
+        candidate.unseenRelicIds.isNotEmpty() -> "还有 ${candidate.unseenRelicIds.size} 件 195 永禁文物没看过"
         candidate.visitCount > 0 -> "已经去过，可以再看一次"
         else -> "本城还没去过的馆"
     }

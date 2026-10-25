@@ -141,6 +141,7 @@ import cn.chenjie.museumexplore.model.VisitTarget
 import cn.chenjie.museumexplore.model.MuseumRecord
 import cn.chenjie.museumexplore.ui.GalleryImage
 import cn.chenjie.museumexplore.ui.ImageViewerDialog
+import cn.chenjie.museumexplore.ui.MapNavigator
 import cn.chenjie.museumexplore.ui.MuseumDirectoryScreen
 import cn.chenjie.museumexplore.ui.MuseumTheme
 import cn.chenjie.museumexplore.ui.MuseumViewModel
@@ -732,7 +733,7 @@ private fun MuseumDetailScreen(
                 entry = officialEntry,
             )
         }
-        item { InfoCard(info, city, visitTargets) }
+        item { InfoCard(museum, info, city, visitTargets) }
         item { SectionLabel("关于这座博物馆") }
         item {
             Text(
@@ -1141,22 +1142,47 @@ private fun OfficialEntryCard(museum: String, info: MuseumInfo?, entry: Official
 }
 
 @Composable
-private fun InfoCard(info: MuseumInfo?, city: String, branches: List<VisitTarget> = emptyList()) {
+private fun InfoCard(
+    museum: String,
+    info: MuseumInfo?,
+    city: String,
+    branches: List<VisitTarget> = emptyList(),
+) {
+    val context = LocalContext.current
     Card(Modifier.fillMaxWidth().padding(14.dp, 10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("时间   ${info?.openingHours ?: "待官方确认"}")
             if (branches.isEmpty()) {
-                Text("地址   ${info?.address ?: "$city · 具体地址待补充"}")
+                val address = info?.address
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("地址   ${address ?: "$city · 具体地址待补充"}", modifier = Modifier.weight(1f))
+                    if (address != null) {
+                        TextButton(onClick = { MapNavigator.navigate(context, museum, address) }) {
+                            Text("导航")
+                        }
+                    }
+                }
             } else {
-                // 多馆区的馆只占一条记录，各馆区地址并排列在地址一栏里。
+                // 多馆区的馆只占一条记录，各馆区地址并排列在地址一栏里，各自可导航。
                 Text("地址")
                 branches.forEach { branch ->
                     val label = branch.branch ?: "整馆"
-                    Text(
-                        "· $label：${branch.address ?: "具体地址待补充"}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 30.dp),
-                    )
+                    val address = branch.address
+                    Row(
+                        modifier = Modifier.padding(start = 30.dp).fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "· $label：${address ?: "具体地址待补充"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (address != null) {
+                            TextButton(onClick = { MapNavigator.navigate(context, museum, address) }) {
+                                Text("导航")
+                            }
+                        }
+                    }
                 }
             }
             Text("预约   ${info?.reservation ?: "待官方确认"}")
@@ -1288,7 +1314,7 @@ private fun mapCenter(city: String): LatLng = mapOf(
 private fun CityMapCard(city: CitySummary, onClick: () -> Unit) {
     Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) { Text(city.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text("${city.relicCount} 件国宝", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium) }
+            Row(verticalAlignment = Alignment.CenterVertically) { Text(city.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text("${city.relicCount} 件 195 永禁文物", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium) }
             Text("${city.visitedCount} / ${city.museumCount} 家博物馆已去", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
             Box(Modifier.fillMaxWidth().height(5.dp).padding(top = 0.dp).clip(RoundedCornerShape(5.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) { Box(Modifier.fillMaxWidth(if (city.museumCount == 0) 0f else city.visitedCount.toFloat() / city.museumCount).height(5.dp).background(MaterialTheme.colorScheme.secondary)) }
         }

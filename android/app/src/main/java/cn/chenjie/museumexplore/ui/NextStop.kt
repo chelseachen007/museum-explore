@@ -2,8 +2,6 @@ package cn.chenjie.museumexplore.ui
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -118,32 +116,6 @@ fun NextStopSection(
                         viewModel.setMuseumWished(recommendations.first().museumId, wanted)
                     },
                 )
-                if (recommendations.size > 1) {
-                    Text(
-                        text = "也可以看看",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 4.dp, top = 18.dp, bottom = 8.dp),
-                    )
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(end = 4.dp),
-                    ) {
-                        items(recommendations.drop(1), key = NextStopCandidate::museumId) { candidate ->
-                            NextStopCard(
-                                candidate = candidate,
-                                openingDetail = openingDetailByMuseum[candidate.museumId],
-                                entry = repository.officialEntry(candidate.museumId),
-                                featured = false,
-                                modifier = Modifier.width(300.dp),
-                                onOpenMuseum = { onOpenMuseum(candidate.city, candidate.museumId) },
-                                onWishChange = { wanted ->
-                                    viewModel.setMuseumWished(candidate.museumId, wanted)
-                                },
-                            )
-                        }
-                    }
-                }
             }
         }
         HorizontalDivider(
@@ -348,14 +320,7 @@ private fun NextStopCard(
 
             if (address != null) {
                 OutlinedButton(
-                    onClick = {
-                        val query = Uri.encode("${candidate.museumId} $address")
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=$query"))
-                        runCatching { context.startActivity(intent) }
-                            .onFailure {
-                                Toast.makeText(context, "没有找到地图应用", Toast.LENGTH_SHORT).show()
-                            }
-                    },
+                    onClick = { MapNavigator.navigate(context, candidate.museumId, address) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp),
@@ -438,13 +403,13 @@ private fun OpeningStatusLine(candidate: NextStopCandidate, openingDetail: Strin
 
 private fun relicSummary(candidate: NextStopCandidate): String = buildString {
     append(candidate.relicsTotal)
-    append(" 件国宝")
+    append(" 件 195 永禁文物")
     if (candidate.relicsWished > 0) {
         append("，其中 ")
         append(candidate.relicsWished)
         append(" 件在你的想去清单")
     } else {
-        append("，想去清单里暂无这家馆国宝")
+        append("，想去清单里暂无这家馆的文物")
     }
 }
 
