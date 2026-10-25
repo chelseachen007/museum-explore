@@ -8,8 +8,8 @@ android { namespace 'cn.chenjie.museumexplore'; compileSdk 35
         applicationId 'cn.chenjie.museumexplore'
         minSdk 29
         targetSdk 35
-        versionCode 9
-        versionName '0.6.1'
+        versionCode 10
+        versionName '0.7.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         // 只带真机需要的两种 ARM ABI：地图 SDK 的 .so 每个 ABI 约 15-24 MB。
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
@@ -47,6 +47,7 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
     implementation 'com.google.android.material:material:1.12.0'
-    // 只画地图：不带定位、不带导航、不带检索，应用不申请定位权限。
-    implementation 'com.amap.api:3dmap:10.0.600'
+    // 高德地图暂时停用（v0.7.0）：相关代码在 MainActivity.kt 里整块注释，SDK 依赖一并摘掉。
+    // 恢复时把下面这行放开，再按 MainActivity.kt 顶部的注释把 AmapView / MapKeyDialog 放出来即可。
+    // implementation 'com.amap.api:3dmap:10.0.600'
 }
