@@ -1,0 +1,87 @@
+{
+  "museums": [
+    {
+      "parent": "浙江省博物馆",
+      "city": "杭州",
+      "address": null,
+      "branches": [
+        {
+          "name": "浙江省博物馆",
+          "address": null
+        },
+        {
+          "name": "浙江省博物馆 · 之江馆区",
+          "address": null
+        },
+        {
+          "name": "浙江省博物馆 · 孤山馆区",
+          "address": null
+        }
+      ]
+    },
+    {
+      "parent": "上海博物馆",
+      "city": "上海",
+      "address": null,
+      "branches": [
+        {
+          "name": "上海博物馆",
+          "address": null
+        },
+        {
+          "name": "上海博物馆 · 人民广场馆",
+          "address": null
+        },
+        {
+          "name": "上海博物馆 · 东馆",
+          "address": null
+        }
+      ]
+    },
+    {
+      "parent": "陕西历史博物馆",
+      "city": "西安",
+      "address": null,
+      "branches": [
+        {
+          "name": "陕西历史博物馆",
+          "address": null
+        },
+        {
+          "name": "陕西历史博物馆 · 秦汉馆",
+          "address": null
+        }
+      ]
+    },
+    {
+      "parent": "苏州博物馆",
+      "city": "苏州",
+      "address": null,
+      "branches": [
+        {
+          "name": "苏州博物馆",
+          "address": null
+        },
+        {
+          "name": "苏州博物馆西馆",
+          "address": null
+        }
+      ]
+    },
+    {
+      "parent": "首都博物馆",
+      "city": "北京",
+      "address": null,
+      "branches": [
+        {
+          "name": "首都博物馆",
+          "address": null
+        },
+        {
+          "name": "北京大运河博物馆",
+          "address": null
+        }
+      ]
+    }
+  ]
+}

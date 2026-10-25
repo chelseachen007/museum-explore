@@ -68,3 +68,55 @@ data class CitySummary(
     val relicCount: Int,
     val visitedCount: Int,
 )
+
+/**
+ * 用户自己新增的博物馆。
+ *
+ * 195 件文物名单之外的馆（包括国外、私人小馆、临时展览馆）都走这里，
+ * 只存最基本的几项，其余一律留空，不编造地址和开放时间。
+ */
+data class UserMuseum(
+    val name: String,
+    val city: String,
+    val officialUrl: String? = null,
+    val address: String? = null,
+    val notes: String? = null,
+    val createdAt: Long = 0L,
+    /** 非空表示这条已经被并进同名/同名的内置馆，名字不能再被当作独立馆名使用。 */
+    val mergedInto: String? = null,
+) {
+    val isMerged: Boolean get() = !mergedInto.isNullOrBlank()
+}
+
+/**
+ * 同一座博物馆下的一个馆区（分馆）。
+ *
+ * 例如「浙江省博物馆」是父馆，「孤山馆区」「之江馆区」是馆区；
+ * 参观记录落到 null 馆区表示「整个馆」，落回具体馆区才能区分这次去了哪一片。
+ */
+data class MuseumBranch(
+    val parent: String,
+    val name: String,
+    val city: String,
+    val address: String? = null,
+)
+
+/** 博物馆列表里的一行。内置馆、用户自建馆统一走这个类型，界面不必关心来源。 */
+data class MuseumEntry(
+    val name: String,
+    val city: String,
+    val source: MuseumSource,
+    val closed: Boolean = false,
+)
+
+enum class MuseumSource { RELIC, BUILT_IN, USER }
+
+/** 可以用来记录参观的选项：要么整馆，要么某个馆区。 */
+data class VisitTarget(
+    val parent: String,
+    val branch: String?,
+    val city: String,
+) {
+    /** 落库时使用的馆名。馆区记录成「父馆 · 馆区」，整馆就是父馆本身。 */
+    val displayName: String get() = if (branch.isNullOrBlank()) parent else "$parent · $branch"
+}

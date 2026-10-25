@@ -98,6 +98,17 @@ data class ExplorationState(
     fun confirmedVisitsForMuseum(museum: String): List<Visit> =
         visitsForMuseum(museum).filterNot { it.pendingConfirmation }
 
+    /** 父馆 + 它的所有馆区（"浙江省博物馆 · 之江馆"）。查整馆记录时要一起算上。 */
+    fun visitsForMuseumFamily(museum: String): List<Visit> {
+        val prefix = "$museum · "
+        return visits.filter { it.museumId == museum || it.museumId.startsWith(prefix) }
+    }
+
+    fun confirmedVisitsForMuseumFamily(museum: String): List<Visit> =
+        visitsForMuseumFamily(museum).filterNot { it.pendingConfirmation }
+
+    fun isVisitedFamily(museum: String): Boolean = visitsForMuseumFamily(museum).any { !it.pendingConfirmation }
+
     fun isMuseumWished(museum: String): Boolean = wishedMuseums.any { it.target == museum }
 
     fun isRelicWished(relicId: Int): Boolean = wishedRelics.any { it.target == relicId.toString() }

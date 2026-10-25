@@ -860,17 +860,15 @@
       "province": "湖北",
       "officialUrl": null,
       "wechat": "荆门市博物馆",
-      "address": "中华人民共和国湖北省荆州市荊州区荊中路166号",
-      "intro": "荆州博物馆位于中华人民共和国湖北省荆州市荆州区荊中路166号，是一座综合性地志博物馆，2008年被国家文物局评为“国家一级博物馆”。",
+      "address": null,
+      "intro": "荆门地方综合博物馆，馆藏以郭店楚简、包山楚墓文物与楚文化资料见长。",
       "openingHours": null,
       "closedDays": null,
       "reservation": null,
-      "sources": [
-        "https://zh.wikipedia.org/wiki/%E8%8D%86%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86"
-      ],
-      "verifiedAt": "2026-10-17",
-      "status": "verified_partial",
-      "wikiUrl": "https://zh.wikipedia.org/wiki/%E8%8D%86%E5%B7%9E%E5%8D%9A%E7%89%A9%E9%A6%86",
+      "sources": [],
+      "verifiedAt": "2026-10-25",
+      "status": "listed",
+      "wikiUrl": null,
       "openToPublic": true
     },
     {
