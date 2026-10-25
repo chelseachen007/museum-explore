@@ -86,30 +86,22 @@ fun MuseumDirectoryScreen(
     var editing by remember { mutableStateOf<String?>(null) }
     var merging by remember { mutableStateOf(false) }
 
-    val entries = remember(revision, query, showOnlyUser) {
-        repository.allMuseumNames()
-            .mapNotNull { name ->
-                val info = repository.museumInfo(name) ?: return@mapNotNull null
-                val source = when {
-                    repository.isUserMuseum(name) -> MuseumSource.USER
-                    info.type == "user_added" -> MuseumSource.USER
-                    repository.relicCount(name) > 0 -> MuseumSource.RELIC
-                    else -> MuseumSource.BUILT_IN
-                }
-                Triple(name, info, source)
-            }
-            .filter { (name, info, source) ->
-                val matchesQuery = query.isBlank() ||
-                    name.contains(query) ||
-                    info.city.contains(query)
-                matchesQuery && (!showOnlyUser || source == MuseumSource.USER)
-            }
-            .sortedWith(compareBy({ it.second.city }, { it.first }))
+    // 全量条目只在数据变更时算一次；搜索和筛选在缓存结果上过滤，
+    // 输入框每敲一个字都不会再回仓库层重算。
+    val allEntries = remember(revision) { repository.museumEntries() }
+    val entries = remember(allEntries, query, showOnlyUser) {
+        val keyword = query.trim()
+        allEntries.filter { entry ->
+            val matchesQuery = keyword.isEmpty() ||
+                entry.name.contains(keyword, ignoreCase = true) ||
+                entry.city.contains(keyword, ignoreCase = true)
+            matchesQuery && (!showOnlyUser || entry.source == MuseumSource.USER)
+        }
     }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         DirectoryHeader(
-            count = repository.allMuseumNames().size,
+            count = allEntries.size,
             onBack = onBack,
         )
         Column {
@@ -153,19 +145,20 @@ fun MuseumDirectoryScreen(
             contentPadding = PaddingValues(14.dp, 10.dp, 14.dp, 28.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(entries, key = { it.first }) { (name, info, source) ->
+            items(entries, key = { it.name }) { entry ->
+                val branchCount = remember(entry.name, revision) { repository.branches(entry.name).size }
                 MuseumDirectoryRow(
-                    name = name,
-                    city = info.city,
-                    subtitle = when (source) {
-                        MuseumSource.USER -> "自己添加 · ${info.city}"
-                        MuseumSource.RELIC -> "${info.city} · ${repository.relicCount(name)} 件永禁文物"
-                        MuseumSource.BUILT_IN -> info.city
+                    name = entry.name,
+                    city = entry.city,
+                    subtitle = when (entry.source) {
+                        MuseumSource.USER -> "自己添加 · ${entry.city}"
+                        MuseumSource.RELIC -> "${entry.city} · ${remember(entry.name, revision) { repository.relicCount(entry.name) }} 件永禁文物"
+                        MuseumSource.BUILT_IN -> entry.city
                     },
-                    badge = if (repository.hasBranches(name)) "${repository.branches(name).size} 个馆区" else null,
-                    visited = repository.isVisited(name),
-                    onClick = { onOpenMuseum(info.city, name) },
-                    onEdit = if (source == MuseumSource.USER) ({ editing = name }) else null,
+                    badge = if (branchCount > 0) "$branchCount 个馆区" else null,
+                    visited = remember(entry.name, revision) { repository.isVisited(entry.name) },
+                    onClick = { onOpenMuseum(entry.city, entry.name) },
+                    onEdit = if (entry.source == MuseumSource.USER) ({ editing = entry.name }) else null,
                 )
             }
         }

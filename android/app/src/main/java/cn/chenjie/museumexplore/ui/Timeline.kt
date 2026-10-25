@@ -238,6 +238,10 @@ fun TimelineScreen(
             ),
             presetRelicId = null,
             repository = repository,
+            otherRelics = remember(visitRelics, relics) {
+                val own = visitRelics.mapTo(HashSet()) { it.id }
+                relics.filterNot { it.id in own }
+            },
             onSave = { note, photos ->
                 viewModel.updateVisitJournal(visit.id, note, photos)
             },
@@ -259,6 +263,10 @@ fun TimelineScreen(
             initialRecord = record,
             presetRelicId = null,
             repository = repository,
+            otherRelics = remember(museumRelics, relics) {
+                val own = museumRelics.mapTo(HashSet()) { it.id }
+                relics.filterNot { it.id in own }
+            },
             onSave = { note, photos ->
                 viewModel.saveMuseumRecord(museum, note, photos)
             },

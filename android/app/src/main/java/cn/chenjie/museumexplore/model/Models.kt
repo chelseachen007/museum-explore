@@ -116,6 +116,8 @@ data class VisitTarget(
     val parent: String,
     val branch: String?,
     val city: String,
+    /** 该馆区地址；父馆那一行的地址在地址栏里并排列出，这里只用于展示。 */
+    val address: String? = null,
 ) {
     /** 落库时使用的馆名。馆区记录成「父馆 · 馆区」，整馆就是父馆本身。 */
     val displayName: String get() = if (branch.isNullOrBlank()) parent else "$parent · $branch"

@@ -46,6 +46,7 @@ class MuseumRepository(private val context: Context) {
     private var cachedState: ExplorationState? = null
     private var cachedUserMuseums: List<UserMuseum>? = null
     private var cachedDirectory: MuseumDirectory? = null
+    private var cachedRelicCounts: Map<String, Int>? = null
 
     /** 内置馆 + 用户自建馆 + 参观过但两边都没有的馆，三者合成的最终视图。 */
     private data class MuseumDirectory(
@@ -397,6 +398,36 @@ class MuseumRepository(private val context: Context) {
         .filterNot { directory().branchParents.contains(it) }
         .sorted()
 
+    /**
+     * 目录页一次性取全量条目。
+     *
+     * 之前目录页对每个馆依次调 museumInfo / isUserMuseum / relicCount，
+     * 每个都是一次 map 查找加一次 canonicalKeys（内部还会再取一次目录），
+     * 几百个馆叠起来就是首屏可见的卡顿。这里统一在一个循环里算完。
+     */
+    fun museumEntries(): List<MuseumEntry> {
+        val directory = directory()
+        val counts = relicCounts()
+        val userNames = directory.userNames
+        return directory.info.values
+            .filterNot { directory.branchParents.contains(it.name) }
+            .map { info ->
+                val source = when {
+                    info.name in userNames || info.type == "user_added" -> MuseumSource.USER
+                    counts[info.name] ?: 0 > 0 -> MuseumSource.RELIC
+                    else -> MuseumSource.BUILT_IN
+                }
+                MuseumEntry(
+                    name = info.name,
+                    city = info.city,
+                    source = source,
+                    // 目录页不判断今天是否闭馆（那要看星期），闭馆与否在详情页展示。
+                    closed = false,
+                )
+            }
+            .sortedWith(compareBy({ it.city }, { it.name }))
+    }
+
     fun cities(): List<CitySummary> {
         val directory = directory()
         val cityMuseums = linkedMapOf<String, MutableSet<String>>()
@@ -428,7 +459,7 @@ class MuseumRepository(private val context: Context) {
         }
     }
 
-    fun relicCount(museum: String): Int = relicsForMuseum(museum).size
+    fun relicCount(museum: String): Int = relicCounts()[museum] ?: 0
     fun relicCountForLocations(raw: String): Int = splitMuseumNames(raw).sumOf(::relicCount)
     fun museumInfo(name: String): MuseumInfo? = directory().info[name]
 
@@ -466,8 +497,10 @@ class MuseumRepository(private val context: Context) {
         val parent = directory.canonical(museum)
         val city = cityOfMuseum(parent)
         return buildList {
-            add(VisitTarget(parent, null, city))
-            branches(parent).forEach { branch -> add(VisitTarget(parent, branch.name, city)) }
+            add(VisitTarget(parent, null, city, directory.branches[parent]?.firstOrNull()?.address))
+            directory.branches[parent].orEmpty().forEach { branch ->
+                add(VisitTarget(parent, branch.name, city, branch.address))
+            }
         }
     }
 
@@ -737,6 +770,7 @@ class MuseumRepository(private val context: Context) {
 
     private fun invalidateDirectory() {
         cachedDirectory = null
+        cachedRelicCounts = null
     }
 
     private fun saveUserMuseums(list: List<UserMuseum>) {
@@ -888,6 +922,27 @@ class MuseumRepository(private val context: Context) {
     }
 
     /** 一个馆名可能由多条记录共用（「A、B」），统一展开成可比较的键集合。 */
+    /**
+     * 馆名 → 该馆涉及的文物数。
+     *
+     * 目录页一次要渲染几百个馆，之前每个馆都 `relics.filter {...}` 一次（195 件 × N 馆），
+     * 滚动和首屏都会明显发卡。这里只扫一遍 relics，按馆名分桶存起来。
+     */
+    private fun relicCounts(): Map<String, Int> = cachedRelicCounts ?: run {
+        val counts = HashMap<String, Int>()
+        relics.forEach { relic ->
+            splitMuseumNames(relic.museum).forEach { name ->
+                counts[name] = (counts[name] ?: 0) + 1
+            }
+        }
+        // 父馆名要把馆区的数量并进来，否则「浙江省博物馆」显示 0 件。
+        directory().aliases.forEach { (alias, canonical) ->
+            counts[canonical]?.let { counts[alias] = (counts[alias] ?: 0) + it }
+        }
+        cachedRelicCounts = counts
+        counts
+    }
+
     private fun canonicalKeys(museum: String): Set<String> {
         val directory = directory()
         return splitMuseumNames(museum)

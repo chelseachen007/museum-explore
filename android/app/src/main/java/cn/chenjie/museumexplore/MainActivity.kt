@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -85,6 +86,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -129,6 +131,7 @@ import okhttp3.OkHttpClient
 import cn.chenjie.museumexplore.data.MuseumRepository
 import cn.chenjie.museumexplore.model.CitySummary
 import cn.chenjie.museumexplore.model.DatePrecision
+import cn.chenjie.museumexplore.model.MuseumBranch
 import cn.chenjie.museumexplore.model.MuseumInfo
 import cn.chenjie.museumexplore.model.OfficialEntry
 import cn.chenjie.museumexplore.model.Relic
@@ -214,10 +217,15 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
     }
     val currentEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentEntry?.destination?.route.orEmpty()
+    // 底部 tab 由状态直接切换，不经过 NavHost 入栈/出栈。
+    // 之前每次切 tab 都 navigate + popUpTo + restoreState，栈一旦清空就会白屏；
+    // 而三个主页本来就不需要回退栈，用 selectedTab 切换既不会白屏也不会重建。
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val activeTab = when {
         currentRoute.startsWith("map") || currentRoute.startsWith("city") || currentRoute.startsWith("museum") -> 1
-        currentRoute == "more" || currentRoute == "timeline" -> 2
-        else -> 0
+        currentRoute == "more" || currentRoute == "timeline" || currentRoute == "museums" -> 2
+        currentRoute.isEmpty() -> selectedTab
+        else -> selectedTab
     }
     val destinations = remember { listOf(AppDestination.Collection, AppDestination.Map, AppDestination.More) }
     // 底部图标是 vector，每次重组重建会白白吃掉切 tab 的那几帧。
@@ -231,7 +239,14 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                 destinations.forEachIndexed { index, destination ->
                     NavigationBarItem(
                         selected = activeTab == index,
-                        onClick = { navigateTab(navController, destination.route) },
+                        onClick = {
+                            selectedTab = index
+                            // 从二级页回到某个 tab 时，把栈上的详情页清掉，避免返回键又退回详情。
+                            if (currentRoute.isNotEmpty() && currentRoute != "collection" &&
+                                currentRoute != "map" && currentRoute != "more") {
+                                navController.popBackStack(navController.graph.startDestinationId, false)
+                            }
+                        },
                         icon = { Icon(tabIcons[index], contentDescription = destination.label) },
                         label = { Text(destination.label) },
                     )
@@ -240,23 +255,47 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
+            // 主页面不在导航栈上，所以返回键不会被 NavHost 拦截。
+            // 在「去哪 / 更多」按返回先回到「国宝」，再按才退出应用。
+            BackHandler(enabled = selectedTab != 0 && (currentRoute.isEmpty() || currentRoute == "home")) {
+                selectedTab = 0
+            }
+            // 二级页优先；栈上只有 home 占位时，按 selectedTab 画主页面。
+            val onSecondaryPage = currentRoute.isNotEmpty() && currentRoute != "home"
+            if (!onSecondaryPage) {
+                when (selectedTab) {
+                    0 -> CollectionTab(
+                        repository = repository,
+                        revision = revision,
+                        onRelicClick = { navController.navigate("relic/${it.id}") },
+                    )
+                    1 -> MapTab(repository, viewModel, revision, navController)
+                    else -> MoreTab(
+                        repository = repository,
+                        onTimeline = { navController.navigate("timeline") },
+                        onMuseums = { navController.navigate("museums") },
+                        onExport = { exportLauncher.launch("museum-explore-backup.zip") },
+                        onImport = { importLauncher.launch(arrayOf("application/zip")) },
+                        onAbout = { aboutDialog = true },
+                        onProtocol = { protocolDialog = true },
+                    )
+                }
+            }
             // 左右滑动切 tab 已去掉：它和 LazyVerticalGrid / LazyColumn 的横向手势抢事件，
             // 表现就是「滑动时页面卡一下，然后跳到别的 tab」。底部导航已经够用。
+            //
+            // 三个主页面（国宝 / 去哪 / 更多）不再进 NavHost 栈，由 selectedTab 切换；
+            // 这里只放二级页，退出即回到当前 tab，不会因为栈被清空而白屏。
             NavHost(
                 navController = navController,
-                startDestination = AppDestination.Collection.route,
+                startDestination = "home",
                 enterTransition = { fadeIn(tween(90)) },
                 exitTransition = { fadeOut(tween(60)) },
                 popEnterTransition = { fadeIn(tween(90)) },
                 popExitTransition = { fadeOut(tween(60)) },
             ) {
-                composable("collection") {
-                    CollectionScreen(
-                        repository = repository,
-                        revision = revision,
-                        onRelicClick = { navController.navigate("relic/${it.id}") },
-                    )
-                }
+                // 空目的地：栈底占位，保证任何二级页被弹出后都有地方可回。
+                composable("home") {}
                 composable("relic/{id}") { entry ->
                     val relic = repository.relics().firstOrNull { it.id == entry.arguments?.getString("id")?.toIntOrNull() }
                     if (relic != null) {
@@ -269,11 +308,12 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                             onOpenMuseumRecord = { city, museum ->
                                 navController.navigate("museum/${Uri.encode(city)}/${Uri.encode(museum)}")
                             },
-                            onMap = { navController.navigate("map") },
+                            onOpenMuseum = { city, museum ->
+                                navController.navigate("museum/${Uri.encode(city)}/${Uri.encode(museum)}")
+                            },
                         )
                     }
                 }
-                composable("map") { MapScreen(repository, viewModel, revision, navController) }
                 composable("city/{city}") { entry ->
                     val city = Uri.decode(entry.arguments?.getString("city").orEmpty())
                     CityMuseumsScreen(repository, city, navController)
@@ -282,17 +322,6 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                     val city = Uri.decode(entry.arguments?.getString("city").orEmpty())
                     val museum = Uri.decode(entry.arguments?.getString("museum").orEmpty())
                     MuseumDetailScreen(repository, viewModel, city, museum, revision, navController)
-                }
-                composable("more") {
-                    MoreScreen(
-                        repository = repository,
-                        onTimeline = { navController.navigate("timeline") },
-                        onMuseums = { navController.navigate("museums") },
-                        onExport = { exportLauncher.launch("museum-explore-backup.zip") },
-                        onImport = { importLauncher.launch(arrayOf("application/zip")) },
-                        onAbout = { aboutDialog = true },
-                        onProtocol = { protocolDialog = true },
-                    )
                 }
                 composable("museums") {
                     MuseumDirectoryScreen(
@@ -325,6 +354,50 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
 
     if (aboutDialog) InfoDialog("博迹", "195 件永禁出境文物\n本地记录版\n版本 0.7.2\n\n想去、已到访、已看到、照片、感想和参观时间线默认保存在本机。官方入口交给微信或系统浏览器打开，应用不读取你的位置。") { aboutDialog = false }
     if (protocolDialog) InfoDialog("隐私与协议", "本应用不申请定位权限，不读取或保存位置信息。到访记录只来自你的手动确认。\n\n想去、已到访、已看到、照片、感想和时间线默认只保存在本机，不上传第三方。打开官方小程序或网站时，由微信或系统浏览器处理页面内容，适用对应服务的隐私政策。\n\nWikimedia Commons 图片按数据中的许可信息使用。") { protocolDialog = false }
+}
+
+@Composable
+private fun CollectionTab(
+    repository: MuseumRepository,
+    revision: Int,
+    onRelicClick: (Relic) -> Unit,
+) {
+    CollectionScreen(
+        repository = repository,
+        revision = revision,
+        onRelicClick = onRelicClick,
+    )
+}
+
+@Composable
+private fun MapTab(
+    repository: MuseumRepository,
+    viewModel: MuseumViewModel,
+    revision: Int,
+    navController: NavHostController,
+) {
+    MapScreen(repository, viewModel, revision, navController)
+}
+
+@Composable
+private fun MoreTab(
+    repository: MuseumRepository,
+    onTimeline: () -> Unit,
+    onMuseums: () -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
+    onAbout: () -> Unit,
+    onProtocol: () -> Unit,
+) {
+    MoreScreen(
+        repository = repository,
+        onTimeline = onTimeline,
+        onMuseums = onMuseums,
+        onExport = onExport,
+        onImport = onImport,
+        onAbout = onAbout,
+        onProtocol = onProtocol,
+    )
 }
 
 @Composable
@@ -482,7 +555,7 @@ private fun RelicDetailScreen(
     revision: Int,
     onBack: () -> Unit,
     onOpenMuseumRecord: (String, String) -> Unit,
-    onMap: () -> Unit,
+    onOpenMuseum: (String, String) -> Unit,
 ) {
     val collected = repository.isCollected(relic.id)
     val wished = repository.isWishedRelic(relic.id)
@@ -516,13 +589,15 @@ private fun RelicDetailScreen(
         }
         SectionLabel("为什么不能出境")
         Text(relic.reason, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 22.dp))
-        LocationCard(relic, repository, onMap)
+        val openMuseum = { onOpenMuseum(relic.city, primaryMuseum) }
+        LocationCard(relic, repository, openMuseum)
         Button(
-            onClick = onMap,
+            onClick = { openMuseum() },
+            enabled = primaryMuseum.isNotBlank(),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(contentColor = Color.White),
-        ) { Text("查看地图", color = Color.White) }
+        ) { Text("查看博物馆", color = Color.White) }
         SectionLabel("完整故事")
         Text(relic.story, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 22.dp))
         Button(
@@ -616,7 +691,8 @@ private fun MuseumDetailScreen(
     val relics = remember(city, museum) { repository.relicsForMuseum(city, museum) }
     val record = remember(revision, museum) { repository.museumRecord(museum) }
     val relicNames = remember(relics) { relics.associate { it.id to it.name } }
-    val hasBranches = remember(museum) { repository.hasBranches(museum) }
+    val visitTargets = remember(museum, revision) { repository.visitTargets(museum) }
+    val hasBranches = visitTargets.size > 1
     val visited = repository.isVisited(museum)
     val wished = repository.isWishedMuseum(museum)
     // 有馆区的馆，整馆视角把各馆区的记录一起算上——用户眼里这还是一家馆。
@@ -656,7 +732,7 @@ private fun MuseumDetailScreen(
                 entry = officialEntry,
             )
         }
-        item { InfoCard(info, city) }
+        item { InfoCard(info, city, visitTargets) }
         item { SectionLabel("关于这座博物馆") }
         item {
             Text(
@@ -715,7 +791,7 @@ private fun MuseumDetailScreen(
     if (showBranchPicker) {
         BranchPickerDialog(
             museum = museum,
-            targets = remember(museum) { repository.visitTargets(museum).drop(1) },
+            targets = visitTargets.drop(1),
             onPick = { branch ->
                 showBranchPicker = false
                 recordTarget = branch
@@ -744,6 +820,11 @@ private fun MuseumDetailScreen(
             presetRelicId = null,
             repository = repository,
             museumId = if (branch.isNullOrBlank()) museum else "$museum · $branch",
+            // 出差时在别的馆看到国宝很常见：默认只给本馆几条，需要时再展开全量。
+            otherRelics = remember(relics) {
+                val own = relics.mapTo(HashSet()) { it.id }
+                repository.relics().filterNot { it.id in own }
+            },
             onSave = { note, photos -> viewModel.saveBranchRecord(museum, branch, note, photos) },
             onDismiss = { showRecordSheet = false },
         )
@@ -1060,11 +1141,24 @@ private fun OfficialEntryCard(museum: String, info: MuseumInfo?, entry: Official
 }
 
 @Composable
-private fun InfoCard(info: MuseumInfo?, city: String) {
+private fun InfoCard(info: MuseumInfo?, city: String, branches: List<VisitTarget> = emptyList()) {
     Card(Modifier.fillMaxWidth().padding(14.dp, 10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("时间   ${info?.openingHours ?: "待官方确认"}")
-            Text("地址   ${info?.address ?: "$city · 具体地址待补充"}")
+            if (branches.isEmpty()) {
+                Text("地址   ${info?.address ?: "$city · 具体地址待补充"}")
+            } else {
+                // 多馆区的馆只占一条记录，各馆区地址并排列在地址一栏里。
+                Text("地址")
+                branches.forEach { branch ->
+                    val label = branch.branch ?: "整馆"
+                    Text(
+                        "· $label：${branch.address ?: "具体地址待补充"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 30.dp),
+                    )
+                }
+            }
             Text("预约   ${info?.reservation ?: "待官方确认"}")
         }
     }
@@ -1255,9 +1349,11 @@ private fun InfoDialog(title: String, message: String, onDismiss: () -> Unit) { 
 private fun navigateTab(navController: NavHostController, route: String) {
     if (navController.currentDestination?.route == route) return
     navController.navigate(route) {
+        // 永远保留起始页不入栈弹出：inclusive=true 会把 collection 自己也弹掉，
+        // 栈清空后 popping 回 collection 时没有目的地可画，表现就是切回来白屏。
         popUpTo(navController.graph.startDestinationId) {
             saveState = true
-            inclusive = route == navController.graph.startDestinationRoute
+            inclusive = false
         }
         launchSingleTop = true
         restoreState = true

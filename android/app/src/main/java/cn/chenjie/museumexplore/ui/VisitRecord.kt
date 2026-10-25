@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,6 +42,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -203,6 +205,8 @@ fun VisitRecordSheet(
     presetRelicId: Int?,
     repository: MuseumRepository,
     museumId: String = museum,
+    /** 其他馆的国宝。默认只列本馆馆藏，出差看到别家的国宝再展开这里。 */
+    otherRelics: List<Relic> = emptyList(),
     onSave: (String, List<VisitPhoto>) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -423,6 +427,7 @@ fun VisitRecordSheet(
         PhotoAssociationDialog(
             currentRelicId = photos[index].relicId,
             relics = relics,
+            otherRelics = otherRelics,
             onSelect = { relicId ->
                 photos = photos.toMutableList().also { list ->
                     list[index] = list[index].copy(relicId = relicId)
@@ -439,9 +444,18 @@ fun VisitRecordSheet(
 private fun PhotoAssociationDialog(
     currentRelicId: Int?,
     relics: List<Relic>,
+    otherRelics: List<Relic> = emptyList(),
     onSelect: (Int?) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // 默认收起，只露本馆馆藏；出差在外再去展开其他馆。
+    var showOthers by rememberSaveable { mutableStateOf(false) }
+    var otherQuery by rememberSaveable { mutableStateOf("") }
+    val visibleOthers = remember(otherRelics, otherQuery) {
+        val keyword = otherQuery.trim()
+        if (keyword.isEmpty()) otherRelics
+        else otherRelics.filter { it.name.contains(keyword) || it.museum.contains(keyword) }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("关联到哪件国宝？") },
@@ -457,14 +471,59 @@ private fun PhotoAssociationDialog(
                     }
                 }
                 itemsIndexed(relics, key = { _, relic -> relic.id }) { _, relic ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable { onSelect(relic.id) }.padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(selected = currentRelicId == relic.id, onClick = { onSelect(relic.id) })
-                        Column(Modifier.padding(start = 4.dp)) {
-                            Text(relic.name, fontWeight = FontWeight.Bold)
-                            Text(relic.era, style = MaterialTheme.typography.labelSmall)
+                    RelicChoiceRow(relic, currentRelicId, onSelect)
+                }
+                if (otherRelics.isNotEmpty()) {
+                    item {
+                        HorizontalDivider(Modifier.padding(vertical = 6.dp))
+                        TextButton(
+                            onClick = { showOthers = !showOthers },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                if (showOthers) "收起其他馆的国宝"
+                                else "在其他馆看到的国宝（${otherRelics.size}）",
+                            )
+                        }
+                    }
+                }
+                if (showOthers) {
+                    item {
+                        OutlinedTextField(
+                            value = otherQuery,
+                            onValueChange = { otherQuery = it },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                            placeholder = { Text("搜国宝名或博物馆") },
+                            leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                    }
+                    itemsIndexed(visibleOthers, key = { _, relic -> relic.id }) { _, relic ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { onSelect(relic.id) }.padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = currentRelicId == relic.id, onClick = { onSelect(relic.id) })
+                            Column(Modifier.padding(start = 4.dp)) {
+                                Text(relic.name, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "${relic.museum} · ${relic.era}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                    if (visibleOthers.isEmpty()) {
+                        item {
+                            Text(
+                                "没找到匹配的国宝",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 12.dp),
+                            )
                         }
                     }
                 }
@@ -472,4 +531,18 @@ private fun PhotoAssociationDialog(
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )
+}
+
+@Composable
+private fun RelicChoiceRow(relic: Relic, currentRelicId: Int?, onSelect: (Int?) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onSelect(relic.id) }.padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = currentRelicId == relic.id, onClick = { onSelect(relic.id) })
+        Column(Modifier.padding(start = 4.dp)) {
+            Text(relic.name, fontWeight = FontWeight.Bold)
+            Text(relic.era, style = MaterialTheme.typography.labelSmall)
+        }
+    }
 }
