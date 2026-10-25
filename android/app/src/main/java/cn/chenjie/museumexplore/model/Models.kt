@@ -28,6 +28,12 @@ data class MuseumRecord(
     val isEmpty: Boolean get() = note.isBlank() && photos.isEmpty()
 }
 
+/** 一条参观记录 + 它在时间线上的位置，用于详情页并列多张卡片。 */
+data class MuseumRecordWithDate(
+    val record: MuseumRecord,
+    val visitId: String? = null,
+)
+
 data class MuseumInfo(
     val name: String,
     val city: String,
@@ -99,6 +105,8 @@ data class MuseumBranch(
     val name: String,
     val city: String,
     val address: String? = null,
+    /** 展示用的馆区名，如「孤山馆区」「本馆」。为空时从 name 里推。 */
+    val label: String? = null,
 )
 
 /** 博物馆列表里的一行。内置馆、用户自建馆统一走这个类型，界面不必关心来源。 */
@@ -118,6 +126,8 @@ data class VisitTarget(
     val city: String,
     /** 该馆区地址；父馆那一行的地址在地址栏里并排列出，这里只用于展示。 */
     val address: String? = null,
+    /** 展示用馆区名。父馆那一行是「本馆」，拆成馆区的馆是「孤山馆区」这种。 */
+    val label: String? = null,
 ) {
     /** 落库时使用的馆名。馆区记录成「父馆 · 馆区」，整馆就是父馆本身。 */
     val displayName: String get() = if (branch.isNullOrBlank()) parent else "$parent · $branch"

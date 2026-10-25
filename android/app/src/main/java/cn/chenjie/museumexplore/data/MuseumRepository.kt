@@ -13,6 +13,7 @@ import cn.chenjie.museumexplore.model.MuseumCandidate
 import cn.chenjie.museumexplore.model.MuseumEntry
 import cn.chenjie.museumexplore.model.MuseumInfo
 import cn.chenjie.museumexplore.model.MuseumRecord
+import cn.chenjie.museumexplore.model.MuseumRecordWithDate
 import cn.chenjie.museumexplore.model.MuseumSource
 import cn.chenjie.museumexplore.model.OfficialEntry
 import cn.chenjie.museumexplore.model.RecordSource
@@ -246,6 +247,25 @@ class MuseumRepository(private val context: Context) {
             ?.id
     }
 
+    /**
+     * 这座馆的所有参观记录，一次一条，最近的在前面。
+     *
+     * 每次「再记一次参观」都是独立一条，详情页会并列成多张卡片——
+     * 只展示「最近一条有内容的」会让前几次的感想和照片看起来丢了。
+     */
+    fun museumRecords(museum: String): List<MuseumRecordWithDate> {
+        val state = exploration()
+        val visits = if (hasBranches(museum)) state.confirmedVisitsForMuseumFamily(museum) else state.confirmedVisitsForMuseum(museum)
+        return visits.filter { it.hasJournal }
+            .sortedWith(VISIT_ORDER)
+            .map { visit ->
+                MuseumRecordWithDate(
+                    record = MuseumRecord(visit.note, visit.photos, visit.startedAt ?: 0L),
+                    visitId = visit.id,
+                )
+            }
+    }
+
     fun museumRecord(museum: String): MuseumRecord {
         val state = exploration()
         // 整馆视角：父馆和它所有馆区里最近一条有内容的记录，都会出现在这一页。
@@ -264,6 +284,20 @@ class MuseumRepository(private val context: Context) {
      * 父馆本身不写 journal（它就是「整馆」这个虚拟目标），内容一律落到具体馆区；
      * 没配馆区的馆照旧用馆名当 museumId。
      */
+    /**
+     * 删除某一条参观记录的内容（感想 + 照片），保留这次到访本身。
+     * 到访是打卡事实，记录是内容，两者不该互相牵连。
+     */
+    fun deleteMuseumRecord(museum: String, record: MuseumRecord) {
+        val state = exploration()
+        val visits = if (hasBranches(museum)) state.confirmedVisitsForMuseumFamily(museum) else state.confirmedVisitsForMuseum(museum)
+        val target = visits.firstOrNull { visit ->
+            visit.note == record.note &&
+                visit.photos.map { it.path }.toSet() == record.photos.map { it.path }.toSet()
+        } ?: return
+        updateVisitJournal(target.id, "", emptyList())
+    }
+
     fun saveBranchRecord(
         museum: String,
         branch: String? = null,
@@ -420,12 +454,12 @@ class MuseumRepository(private val context: Context) {
             .filter { cityKeys.contains(cityOfMuseum(it)) }
         return (fromDirectory + fromVisits)
             .distinct()
-            .filterNot { directory.branchParents.contains(it) || directory.branchNames.contains(it) }
+            .filterNot { directory.branchNames.contains(it) }
             .sortedWith(compareByDescending<String> { relicCount(it) }.thenBy { it })
     }
 
     fun allMuseumNames(): List<String> = directory().info.keys
-        .filterNot { directory().branchParents.contains(it) || directory().branchNames.contains(it) }
+        .filterNot { directory().branchNames.contains(it) }
         .sorted()
 
     /**
@@ -440,7 +474,7 @@ class MuseumRepository(private val context: Context) {
         val counts = relicCounts()
         val userNames = directory.userNames
         return directory.info.values
-            .filterNot { directory.branchParents.contains(it.name) || directory.branchNames.contains(it.name) }
+            .filterNot { directory.branchNames.contains(it.name) }
             .map { info ->
                 val source = when {
                     info.name in userNames || info.type == "user_added" -> MuseumSource.USER
@@ -462,7 +496,7 @@ class MuseumRepository(private val context: Context) {
         val directory = directory()
         val cityMuseums = linkedMapOf<String, MutableSet<String>>()
         relics.groupBy { it.city }.forEach { (city, cityRelics) -> cityMuseums.getOrPut(city) { linkedSetOf() } }
-        directory.info.values.filterNot { directory.branchParents.contains(it.name) || directory.branchNames.contains(it.name) }.forEach { info ->
+        directory.info.values.filterNot { directory.branchNames.contains(it.name) }.forEach { info ->
             cityMuseums.getOrPut(info.city) { linkedSetOf() }.add(info.name)
         }
         return cityMuseums.map { (city, museums) ->
@@ -526,10 +560,27 @@ class MuseumRepository(private val context: Context) {
         val directory = directory()
         val parent = directory.canonical(museum)
         val city = cityOfMuseum(parent)
+        // 同一地址只留一行：数据里「本馆」和某个馆区可能指向同一个地方，重复列出没意义。
+        val branches = directory.branches[parent].orEmpty()
+            .distinctBy { it.address?.replace(Regex("\\s+"), "")?.takeIf { addr -> addr.isNotBlank() } ?: it.name }
         return buildList {
-            add(VisitTarget(parent, null, city, directory.branches[parent]?.firstOrNull()?.address))
-            directory.branches[parent].orEmpty().forEach { branch ->
-                add(VisitTarget(parent, branch.name, city, branch.address))
+            if (branches.isEmpty()) {
+                add(VisitTarget(parent, null, city, directory.info[parent]?.address))
+            } else {
+                // 每个馆区各占一行，父馆本身不是「一个」地方，不再单列一行。
+                branches.forEach { branch ->
+                    val isParentRow = branch.name == parent
+                    add(
+                        VisitTarget(
+                            parent = parent,
+                            // 整馆那一行不写馆区后缀，避免出现「浙江省博物馆 · 浙江省博物馆」。
+                            branch = if (isParentRow) null else branch.name,
+                            city = city,
+                            address = branch.address,
+                            label = branch.label ?: if (isParentRow) "本馆" else branch.name.substringAfter(" · ", branch.name),
+                        ),
+                    )
+                }
             }
         }
     }
@@ -896,6 +947,7 @@ class MuseumRepository(private val context: Context) {
                             name = name,
                             city = city,
                             address = cleanDisplay(branch.optString("address")).takeIf { it.isNotBlank() },
+                            label = cleanDisplay(branch.optString("label")).takeIf { it.isNotBlank() },
                         ),
                     )
                 }

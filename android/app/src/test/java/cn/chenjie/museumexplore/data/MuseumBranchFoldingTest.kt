@@ -91,4 +91,20 @@ class MuseumBranchFoldingTest {
         assertTrue(folded.branchNames.isEmpty())
         assertTrue(folded.branchParents.isEmpty())
     }
+
+    @Test
+    fun `父馆本身必须留在列表里`() {
+        // 曾经的 bug：把 branchParents 一起过滤掉，浙江省博物馆等 5 家馆
+        // 从清单和搜索里整体消失。父馆那一行代表「整馆」，必须保留。
+        val directory = mapOf(
+            "浙江省博物馆" to info("浙江省博物馆", "杭州"),
+            "故宫博物院" to info("故宫博物院", "北京"),
+        )
+
+        val folded = MuseumRepository.foldBranchRecords(directory, zhejiangBranches)
+
+        assertTrue("父馆不能被折掉", "浙江省博物馆" in folded.info)
+        assertTrue("父馆要能被搜索到", folded.info.keys.any { it.contains("浙江省博物馆") })
+        assertFalse("父馆不是馆区", folded.branchNames.contains("浙江省博物馆"))
+    }
 }

@@ -3,6 +3,7 @@ package cn.chenjie.museumexplore.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import cn.chenjie.museumexplore.data.MuseumRepository
+import cn.chenjie.museumexplore.model.MuseumRecord
 import cn.chenjie.museumexplore.model.VisitPhoto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +44,10 @@ class MuseumViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun removeVisit(visitId: String) { repository.removeVisit(visitId); refresh() }
+    fun deleteMuseumRecord(museum: String, record: MuseumRecord) {
+        repository.deleteMuseumRecord(museum, record)
+        refresh()
+    }
     fun saveNote(id: Int, value: String) { repository.saveNote(id, value); refresh() }
     fun saveMuseumRecord(museum: String, note: String, photos: List<VisitPhoto>) {
         repository.saveMuseumRecord(museum, note, photos)

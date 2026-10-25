@@ -626,6 +626,31 @@ private fun RelicDetailScreen(
     ImageViewerDialog(viewerImage) { viewerImage = null }
 }
 
+/** 还没有任何记录时的引导卡片。 */
+@Composable
+private fun EmptyVisitRecordCard(onAdd: () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Text("我的参观记录", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                "写下这次参观的感想，拍下展厅里打动你的国宝。照片可以选择关联到对应国宝。",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+            Button(
+                onClick = onAdd,
+                modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+            ) { Text("写感想 / 添加照片", color = Color.White) }
+        }
+    }
+}
+
 @Composable
 private fun SectionLabel(text: String) { Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(22.dp, 18.dp, 22.dp, 8.dp)) }
 
@@ -691,6 +716,8 @@ private fun MuseumDetailScreen(
     val officialEntry = repository.officialEntry(museum)
     val relics = remember(city, museum) { repository.relicsForMuseum(city, museum) }
     val record = remember(revision, museum) { repository.museumRecord(museum) }
+    // 每次「再记一次参观」都是独立一条，详情页并列展示，不覆盖之前的。
+    val records = remember(revision, museum) { repository.museumRecords(museum) }
     val relicNames = remember(relics) { relics.associate { it.id to it.name } }
     val visitTargets = remember(museum, revision) { repository.visitTargets(museum) }
     val hasBranches = visitTargets.size > 1
@@ -707,6 +734,7 @@ private fun MuseumDetailScreen(
     var showBranchPicker by rememberSaveable(museum) { mutableStateOf(false) }
     var showVisitDateDialog by rememberSaveable(museum) { mutableStateOf(false) }
     var confirmRemoveVisit by remember(museum) { mutableStateOf(false) }
+    var pendingDeleteRecord by remember(museum) { mutableStateOf<MuseumRecord?>(null) }
     var pendingOpenSheetAfterVisit by remember(museum) { mutableStateOf(false) }
     var viewerImage by remember { mutableStateOf<GalleryImage?>(null) }
     val heroImage = hero?.let {
@@ -773,27 +801,31 @@ private fun MuseumDetailScreen(
                 )
             }
         }
-        item {
-            MuseumVisitRecordSection(
-                record = record,
-                relicNames = relicNames,
-                onEdit = {
-                    if (hasBranches) showBranchPicker = true else { recordTarget = null; showRecordSheet = true }
-                },
-                onPhotoClick = { photo ->
-                    val relicName = photo.relicId?.let(relicNames::get)
-                    viewerImage = GalleryImage(
-                        model = File(photo.path),
-                        title = "我的照片",
-                        subtitle = relicName?.let { "关联：$it" } ?: "未关联国宝",
-                    )
-                },
-                onDelete = if (record.note.isNotBlank() || record.photos.isNotEmpty()) {
-                    { confirmRemoveVisit = true }
-                } else {
-                    null
-                },
-            )
+        records.forEachIndexed { index, entry ->
+            item(key = "record_${entry.visitId ?: index}") {
+                MuseumVisitRecordSection(
+                    record = entry.record,
+                    relicNames = relicNames,
+                    onEdit = { recordTarget = null; showRecordSheet = true },
+                    onPhotoClick = { photo ->
+                        val relicName = photo.relicId?.let(relicNames::get)
+                        viewerImage = GalleryImage(
+                            model = File(photo.path),
+                            title = "我的照片",
+                            subtitle = relicName?.let { "关联：$it" } ?: "未关联国宝",
+                        )
+                    },
+                    onDelete = if (entry.record.note.isNotBlank() || entry.record.photos.isNotEmpty()) {
+                        { pendingDeleteRecord = entry.record }
+                    } else {
+                        null
+                    },
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+        if (records.isEmpty()) {
+            item { EmptyVisitRecordCard(onAdd = { if (hasBranches) showBranchPicker = true else { recordTarget = null; showRecordSheet = true } }) }
         }
         item { SectionLabel("馆藏国宝") }
         items(relics, key = { it.id }) { relic ->
@@ -806,7 +838,7 @@ private fun MuseumDetailScreen(
     if (showBranchPicker) {
         BranchPickerDialog(
             museum = museum,
-            targets = visitTargets.drop(1),
+            targets = visitTargets,
             onPick = { branch ->
                 showBranchPicker = false
                 recordTarget = branch
@@ -859,6 +891,23 @@ private fun MuseumDetailScreen(
             onDismiss = { showVisitDateDialog = false },
         )
     }
+    pendingDeleteRecord?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteRecord = null },
+            title = { Text("删除这条记录？") },
+            text = { Text("会删掉这条的感想和照片，已看到的国宝和到访次数都保留。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    target.photos.forEach { runCatching { repository.deletePhoto(it.path) } }
+                    viewModel.deleteMuseumRecord(museum, target)
+                    pendingDeleteRecord = null
+                }) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { pendingDeleteRecord = null }) { Text("保留") } },
+        )
+    }
     if (confirmRemoveVisit) {
         AlertDialog(
             onDismissRequest = { confirmRemoveVisit = false },
@@ -895,7 +944,7 @@ private fun BranchPickerDialog(
             LazyColumn {
                 items(targets, key = { it.displayName }) { target ->
                     Text(
-                        target.branch ?: target.displayName,
+                        target.label ?: target.branch ?: "整个 $museum",
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.fillMaxWidth().clickable { onPick(target.branch ?: "") }
                             .padding(vertical = 14.dp),
@@ -1186,7 +1235,7 @@ private fun InfoCard(
                 // 多馆区的馆只占一条记录，各馆区地址并排列在地址一栏里，各自可导航。
                 Text("地址")
                 branches.forEach { branch ->
-                    val label = branch.branch ?: "整馆"
+                    val label = branch.label ?: branch.branch ?: "本馆"
                     val address = branch.address
                     Row(
                         modifier = Modifier.padding(start = 30.dp).fillMaxWidth(),
