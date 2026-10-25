@@ -54,6 +54,8 @@ class MuseumRepository(private val context: Context) {
         val branches: Map<String, List<MuseumBranch>>,
         /** 被并入某个父馆的老记录馆名 → 父馆名。老记录仍然能正确归位。 */
         val aliases: Map<String, String>,
+        /** 被并进父馆的馆区名。它们不是独立条目，列表和城市计数都要排除。 */
+        val branchNames: Set<String>,
         /** 用户自建馆名，用于列表排序和来源标记。 */
         val userNames: Set<String>,
         val branchParents: Set<String>,
@@ -390,12 +392,12 @@ class MuseumRepository(private val context: Context) {
             .filter { cityKeys.contains(cityOfMuseum(it)) }
         return (fromDirectory + fromVisits)
             .distinct()
-            .filterNot { directory.branchParents.contains(it) }
+            .filterNot { directory.branchParents.contains(it) || directory.branchNames.contains(it) }
             .sortedWith(compareByDescending<String> { relicCount(it) }.thenBy { it })
     }
 
     fun allMuseumNames(): List<String> = directory().info.keys
-        .filterNot { directory().branchParents.contains(it) }
+        .filterNot { directory().branchParents.contains(it) || directory().branchNames.contains(it) }
         .sorted()
 
     /**
@@ -410,7 +412,7 @@ class MuseumRepository(private val context: Context) {
         val counts = relicCounts()
         val userNames = directory.userNames
         return directory.info.values
-            .filterNot { directory.branchParents.contains(it.name) }
+            .filterNot { directory.branchParents.contains(it.name) || directory.branchNames.contains(it.name) }
             .map { info ->
                 val source = when {
                     info.name in userNames || info.type == "user_added" -> MuseumSource.USER
@@ -432,7 +434,7 @@ class MuseumRepository(private val context: Context) {
         val directory = directory()
         val cityMuseums = linkedMapOf<String, MutableSet<String>>()
         relics.groupBy { it.city }.forEach { (city, cityRelics) -> cityMuseums.getOrPut(city) { linkedSetOf() } }
-        directory.info.values.filterNot { directory.branchParents.contains(it.name) }.forEach { info ->
+        directory.info.values.filterNot { directory.branchParents.contains(it.name) || directory.branchNames.contains(it.name) }.forEach { info ->
             cityMuseums.getOrPut(info.city) { linkedSetOf() }.add(info.name)
         }
         return cityMuseums.map { (city, museums) ->
@@ -751,22 +753,25 @@ class MuseumRepository(private val context: Context) {
             )
         }
         val branches = builtInBranches.groupBy { it.parent }
-        val aliases = HashMap<String, String>()
-        val branchParents = HashSet<String>()
-        branches.forEach { (parent, children) ->
-            branchParents.add(parent)
-            children.forEach { child -> aliases[child.name] = parent }
-        }
+        val folding = foldBranchRecords(merged, builtInBranches)
         val directory = MuseumDirectory(
-            info = merged,
+            info = folding.info,
             branches = branches,
-            aliases = aliases,
+            aliases = folding.aliases,
+            branchNames = folding.branchNames,
             userNames = userMuseums.map { it.name }.toSet(),
-            branchParents = branchParents,
+            branchParents = folding.branchParents,
         )
         cachedDirectory = directory
         return directory
     }
+
+    internal data class BranchFolding(
+        val info: Map<String, MuseumInfo>,
+        val aliases: Map<String, String>,
+        val branchNames: Set<String>,
+        val branchParents: Set<String>,
+    )
 
     private fun invalidateDirectory() {
         cachedDirectory = null
@@ -1149,7 +1154,40 @@ class MuseumRepository(private val context: Context) {
     private fun isSameDay(first: Long, second: Long, zone: ZoneId = ZoneId.systemDefault()): Boolean =
         LocalDate.ofInstant(Instant.ofEpochMilli(first), zone) == LocalDate.ofInstant(Instant.ofEpochMilli(second), zone)
 
-    private companion object {
+    companion object {
+        /**
+         * 把「父馆 · 馆区」的独立记录折进父馆。
+         *
+         * 一个馆在列表里只能占一行，馆区只作为地址栏里的一行地址存在。
+         * 老版本的名录里留下过「浙江省博物馆 · 之江馆区」这种独立条目，
+         * 后来 curator 又往名录里补了分馆，两处都命中就会重复出现，所以这里统一收口。
+         *
+         * 纯函数，便于单测覆盖。
+         */
+        internal fun foldBranchRecords(
+            info: Map<String, MuseumInfo>,
+            branches: List<MuseumBranch>,
+        ): BranchFolding {
+            val aliases = HashMap<String, String>()
+            val branchNames = HashSet<String>()
+            val branchParents = HashSet<String>()
+            branches.forEach { branch ->
+                branchParents.add(branch.parent)
+                // 父馆那一行代表整馆，不该算作「子馆」被排除掉。
+                if (branch.name != branch.parent) {
+                    aliases[branch.name] = branch.parent
+                    branchNames.add(branch.name)
+                }
+            }
+            val folded = info.filterNot { (name, _) -> name in branchNames }
+            return BranchFolding(
+                info = folded,
+                aliases = aliases,
+                branchNames = branchNames,
+                branchParents = branchParents,
+            )
+        }
+
         const val RECORD_PREFIX = "museum_record:"
         const val EXPLORATION_KEY = "exploration_v2"
         const val LEGACY_BACKUP_KEY = "legacy_backup_v051"
