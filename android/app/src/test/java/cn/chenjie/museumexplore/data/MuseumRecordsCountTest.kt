@@ -3,10 +3,13 @@ package cn.chenjie.museumexplore.data
 import cn.chenjie.museumexplore.model.DatePrecision
 import cn.chenjie.museumexplore.model.ExplorationState
 import cn.chenjie.museumexplore.model.RecordSource
+import cn.chenjie.museumexplore.model.Sighting
 import cn.chenjie.museumexplore.model.Visit
 import cn.chenjie.museumexplore.model.VisitPhoto
 import cn.chenjie.museumexplore.model.VISIT_ORDER
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -96,5 +99,45 @@ class MuseumRecordsCountTest {
             state.confirmedVisitsForMuseum(museum).size,
             records(state).size,
         )
+    }
+
+    @Test
+    fun `删除一次参观后卡片和已到访次数一起减少`() {
+        val state = ExplorationState(
+            visits = listOf(
+                visit("v1", startedAt = 1000L, note = "第一次"),
+                visit("v2", startedAt = 2000L, note = "第二次"),
+            ),
+        )
+
+        val (next, removed) = ExplorationOps.removeVisit(state, "v2")
+
+        assertEquals("被删的就是点的那一条", "v2", removed?.id)
+        assertEquals("卡片少一张", 1, records(next).size)
+        assertEquals("已到访次数同时减一", 1, next.confirmedVisitsForMuseum(museum).size)
+        assertEquals("1", records(next).single().id.removePrefix("v"))
+    }
+
+    @Test
+    fun `删除参观不会连带删掉已看到的文物`() {
+        val state = ExplorationState(
+            visits = listOf(visit("v1", startedAt = 1000L, note = "看过越窑青瓷")),
+            sightings = listOf(
+                Sighting(
+                    id = "s1",
+                    relicId = 45,
+                    museumId = museum,
+                    visitId = "v1",
+                    seenAt = 1000L,
+                    source = RecordSource.MANUAL,
+                ),
+            ),
+        )
+
+        val (next, _) = ExplorationOps.removeVisit(state, "v1")
+
+        assertEquals("看过的文物要留着", 1, next.sightings.size)
+        assertNull("只解除和这次参观的关联", next.sightings.single().visitId)
+        assertTrue(next.isSeen(45))
     }
 }

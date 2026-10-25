@@ -284,20 +284,6 @@ class MuseumRepository(private val context: Context) {
      * 父馆本身不写 journal（它就是「整馆」这个虚拟目标），内容一律落到具体馆区；
      * 没配馆区的馆照旧用馆名当 museumId。
      */
-    /**
-     * 删除某一条参观记录的内容（感想 + 照片），保留这次到访本身。
-     * 到访是打卡事实，记录是内容，两者不该互相牵连。
-     */
-    fun deleteMuseumRecord(museum: String, record: MuseumRecord) {
-        val state = exploration()
-        val visits = if (hasBranches(museum)) state.confirmedVisitsForMuseumFamily(museum) else state.confirmedVisitsForMuseum(museum)
-        val target = visits.firstOrNull { visit ->
-            visit.note == record.note &&
-                visit.photos.map { it.path }.toSet() == record.photos.map { it.path }.toSet()
-        } ?: return
-        updateVisitJournal(target.id, "", emptyList())
-    }
-
     fun saveBranchRecord(
         museum: String,
         branch: String? = null,
@@ -332,6 +318,30 @@ class MuseumRepository(private val context: Context) {
                 },
             ),
         )
+    }
+
+    /**
+     * 删除这一次参观：连到访本身一起删，不是只清空感想和照片。
+     *
+     * 用户理解的「删除我的参观记录」就是这条记录从此不存在——
+     * 只清内容的话卡片还在、已到访次数也不变，看起来像没删掉。
+     * 已看到的文物记录不受影响（ExplorationOps.removeVisit 自己会保留）。
+     */
+    fun deleteMuseumRecord(museum: String, record: MuseumRecord) {
+        deleteMuseumRecord(museum, record, visitId = null)
+    }
+
+    /** 有 visitId 时按 id 精确删，避免两条内容完全相同的记录删错。 */
+    fun deleteMuseumRecord(museum: String, record: MuseumRecord, visitId: String?) {
+        val state = exploration()
+        val visits = if (hasBranches(museum)) state.confirmedVisitsForMuseumFamily(museum) else state.confirmedVisitsForMuseum(museum)
+        val target = visitId?.let { id -> visits.firstOrNull { it.id == id } }
+            ?: visits.firstOrNull { visit ->
+                visit.note == record.note &&
+                    visit.photos.map { it.path }.toSet() == record.photos.map { it.path }.toSet()
+            } ?: return
+        record.photos.forEach { path -> runCatching { deletePhoto(path.path) } }
+        removeVisit(target.id)
     }
 
     fun saveMuseumRecord(museum: String, note: String, photos: List<VisitPhoto>) {

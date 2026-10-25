@@ -735,7 +735,7 @@ private fun MuseumDetailScreen(
     var editingVisitId by rememberSaveable(museum) { mutableStateOf<String?>(null) }
     var showBranchPicker by rememberSaveable(museum) { mutableStateOf(false) }
     var showVisitDateDialog by rememberSaveable(museum) { mutableStateOf(false) }
-    var pendingDeleteRecord by remember(museum) { mutableStateOf<MuseumRecord?>(null) }
+    var pendingDeleteRecord by remember(museum) { mutableStateOf<Pair<MuseumRecord, String?>?>(null) }
     var pendingOpenSheetAfterVisit by remember(museum) { mutableStateOf(false) }
     var viewerImage by remember { mutableStateOf<GalleryImage?>(null) }
     val heroImage = hero?.let {
@@ -823,7 +823,7 @@ private fun MuseumDetailScreen(
                         )
                     },
                     onDelete = if (entry.record.note.isNotBlank() || entry.record.photos.isNotEmpty()) {
-                        { pendingDeleteRecord = entry.record }
+                        { pendingDeleteRecord = entry.record to entry.visitId }
                     } else {
                         null
                     },
@@ -915,15 +915,14 @@ private fun MuseumDetailScreen(
             onDismiss = { showVisitDateDialog = false },
         )
     }
-    pendingDeleteRecord?.let { target ->
+    pendingDeleteRecord?.let { (target, targetVisitId) ->
         AlertDialog(
             onDismissRequest = { pendingDeleteRecord = null },
-            title = { Text("删除这条记录？") },
-            text = { Text("会删掉这条的感想和照片，已看到的文物和到访次数都保留。") },
+            title = { Text("删除这次参观？") },
+            text = { Text("这条记录会从「我的记录」里消失，已到访次数也会减一。已经看到的文物记录会保留。") },
             confirmButton = {
                 TextButton(onClick = {
-                    target.photos.forEach { runCatching { repository.deletePhoto(it.path) } }
-                    viewModel.deleteMuseumRecord(museum, target)
+                    viewModel.deleteMuseumRecord(museum, target, targetVisitId)
                     pendingDeleteRecord = null
                 }) {
                     Text("删除", color = MaterialTheme.colorScheme.error)

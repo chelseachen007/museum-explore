@@ -49,8 +49,8 @@ class MuseumViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun removeVisit(visitId: String) { repository.removeVisit(visitId); refresh() }
-    fun deleteMuseumRecord(museum: String, record: MuseumRecord) {
-        repository.deleteMuseumRecord(museum, record)
+    fun deleteMuseumRecord(museum: String, record: MuseumRecord, visitId: String? = null) {
+        repository.deleteMuseumRecord(museum, record, visitId)
         refresh()
     }
     fun saveNote(id: Int, value: String) { repository.saveNote(id, value); refresh() }
