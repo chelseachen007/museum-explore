@@ -106,6 +106,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -1227,45 +1228,69 @@ private fun InfoCard(
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("时间   ${info?.openingHours ?: "待官方确认"}")
             if (branches.isEmpty()) {
-                val address = info?.address
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("地址   ${address ?: "$city · 具体地址待补充"}", modifier = Modifier.weight(1f))
-                    // 没地址也能导航：直接用馆名搜，总比没按钮强。
-                    TextButton(onClick = { MapNavigator.navigate(context, museum, address) }) {
-                        Text("导航")
-                    }
-                }
+                // 没收录地址时不写「具体地址待补充」占位，导航按钮本身就说清了去哪里。
+                AddressRow(
+                    address = info?.address,
+                    fallback = city,
+                    onNavigate = { MapNavigator.navigate(context, museum, info?.address) },
+                )
             } else {
                 // 多馆区的馆只占一条记录，各馆区地址并排列在地址一栏里，各自可导航。
                 Text("地址")
                 branches.forEach { branch ->
                     val label = branch.label ?: branch.branch ?: "本馆"
                     val address = branch.address
-                    Row(
-                        modifier = Modifier.padding(start = 30.dp).fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            "· $label：${address ?: "具体地址待补充"}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        // 馆区缺地址时退回搜馆名 + 馆区名。
-                        TextButton(
-                            onClick = {
-                                MapNavigator.navigate(
-                                    context,
-                                    if (address == null) "$museum · $label" else museum,
-                                    address,
-                                )
-                            },
-                        ) {
-                            Text("导航")
-                        }
-                    }
+                    // 馆区缺地址时退回搜馆名 + 馆区名。
+                    AddressRow(
+                        address = address,
+                        fallback = null,
+                        prefix = "· $label：",
+                        indent = 30.dp,
+                        onNavigate = {
+                            MapNavigator.navigate(
+                                context,
+                                if (address == null) "$museum · $label" else museum,
+                                address,
+                            )
+                        },
+                    )
                 }
             }
             Text("预约   ${info?.reservation ?: "待官方确认"}")
+        }
+    }
+}
+
+/**
+ * 地址一栏：有地址就写地址，没地址就不写占位文案。
+ *
+ * 之前没地址时会渲染「$city · 具体地址待补充」再跟一个导航按钮，
+ * 而 TextButton 自带 48dp 最小触达高度，行被撑高，看起来就像地址下面多了个空行。
+ */
+@Composable
+private fun AddressRow(
+    address: String?,
+    fallback: String?,
+    onNavigate: () -> Unit,
+    prefix: String = "地址   ",
+    indent: Dp = 0.dp,
+) {
+    val shown = address?.trim()?.takeIf { it.isNotEmpty() } ?: fallback
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = indent),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "$prefix${shown ?: "暂无地址"}",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        // 没地址也能导航：直接用馆名搜，总比没按钮强。
+        TextButton(
+            onClick = onNavigate,
+            contentPadding = PaddingValues(horizontal = 8.dp),
+        ) {
+            Text("导航")
         }
     }
 }
