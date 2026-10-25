@@ -1230,10 +1230,9 @@ private fun InfoCard(
                 val address = info?.address
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("地址   ${address ?: "$city · 具体地址待补充"}", modifier = Modifier.weight(1f))
-                    if (address != null) {
-                        TextButton(onClick = { MapNavigator.navigate(context, museum, address) }) {
-                            Text("导航")
-                        }
+                    // 没地址也能导航：直接用馆名搜，总比没按钮强。
+                    TextButton(onClick = { MapNavigator.navigate(context, museum, address) }) {
+                        Text("导航")
                     }
                 }
             } else {
@@ -1251,10 +1250,17 @@ private fun InfoCard(
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                         )
-                        if (address != null) {
-                            TextButton(onClick = { MapNavigator.navigate(context, museum, address) }) {
-                                Text("导航")
-                            }
+                        // 馆区缺地址时退回搜馆名 + 馆区名。
+                        TextButton(
+                            onClick = {
+                                MapNavigator.navigate(
+                                    context,
+                                    if (address == null) "$museum · $label" else museum,
+                                    address,
+                                )
+                            },
+                        ) {
+                            Text("导航")
                         }
                     }
                 }

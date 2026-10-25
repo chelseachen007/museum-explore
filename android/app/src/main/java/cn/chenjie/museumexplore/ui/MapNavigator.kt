@@ -20,9 +20,14 @@ object MapNavigator {
     /** 高德地图原生 scheme 的包名。 */
     private const val AMAP_PACKAGE = "com.autonavi.minimap"
 
+    /**
+     * 没收录具体地址时直接用馆名导航。
+     *
+     * 博物馆在高德地图里基本都有 POI，搜「浙江省博物馆」比让用户自己复制粘贴强；
+     * 地址缺失不该变成「不能导航」。
+     */
     fun navigate(context: Context, landmark: String, address: String?) {
-        val target = listOfNotNull(landmark.trim().takeIf { it.isNotEmpty() }, address?.trim()?.takeIf { it.isNotEmpty() })
-            .joinToString(" ")
+        val target = searchTarget(landmark, address)
         if (target.isEmpty()) {
             Toast.makeText(context, "这家馆还没有可用的地址", Toast.LENGTH_SHORT).show()
             return
@@ -32,6 +37,24 @@ object MapNavigator {
         if (launchSystemMap(context, target)) return
 
         Toast.makeText(context, "没有找到可用的地图应用", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * 拼出交给地图应用的关键词。
+     *
+     * 有地址用「馆名 + 地址」，没地址就只用馆名——博物馆在高德基本都有 POI，
+     * 缺地址不该让「导航」按钮消失。
+     */
+    internal fun searchTarget(landmark: String, address: String?): String {
+        val name = landmark.trim()
+        val detail = address?.trim().orEmpty()
+        return when {
+            detail.isEmpty() -> name
+            name.isEmpty() -> detail
+            // 地址里已经带了馆名的话不重复拼一遍。
+            detail.contains(name) -> detail
+            else -> "$name $detail"
+        }
     }
 
     /** 高德 URL scheme：`androidamap://keywordNavi` 直接按关键词搜索并进入导航。 */

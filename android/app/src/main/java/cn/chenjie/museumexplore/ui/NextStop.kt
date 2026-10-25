@@ -1,8 +1,5 @@
 package cn.chenjie.museumexplore.ui
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -318,44 +315,22 @@ private fun NextStopCard(
                 )
             }
 
-            if (address != null) {
-                OutlinedButton(
-                    onClick = { MapNavigator.navigate(context, candidate.museumId, address) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    shape = RoundedCornerShape(14.dp),
-                ) {
-                    Text("导航去这里")
-                }
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "地址待核验",
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(
-                        onClick = {
-                            val clipboard = context.getSystemService(ClipboardManager::class.java)
-                            clipboard?.setPrimaryClip(
-                                ClipData.newPlainText("博物馆名称", candidate.museumId),
-                            )
-                            Toast.makeText(
-                                context,
-                                "已复制「${candidate.museumId}」",
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        },
-                    ) {
-                        Text("复制馆名")
-                    }
-                }
+            // 没核到地址也照样给导航：按馆名搜，用户不用自己复制粘贴。
+            OutlinedButton(
+                onClick = { MapNavigator.navigate(context, candidate.museumId, address) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Text("导航去这里")
+            }
+            if (address == null) {
+                Text(
+                    text = "地址待核验，将按馆名搜索",
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
 
             TextButton(
