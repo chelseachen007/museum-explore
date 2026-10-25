@@ -7,3 +7,6 @@ android/app/build/
 博迹-*-debug.apk
 **/__pycache__/
 *.pyc
+
+# APK 签名校验副产品，不进版本库
+*.idsig
