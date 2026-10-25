@@ -94,7 +94,11 @@ fun MuseumVisitRecordSection(
     onPhotoClick: (VisitPhoto) -> Unit,
     /** 删除这条记录。为空时不显示删除入口。 */
     onDelete: (() -> Unit)? = null,
+    /** 记录更新时刻为空时（例如刚补的一次到访），用这次到访的日期顶上。 */
+    fallbackTime: Long = 0L,
 ) {
+    // 空记录也照样出卡片：一次到访对应用一张卡片，卡片数必须和「已到访 N 次」对得上。
+    val updatedAt = record.updatedAt.takeIf { it > 0L } ?: fallbackTime
     if (record.isEmpty) {
         Card(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp),
@@ -103,8 +107,15 @@ fun MuseumVisitRecordSection(
         ) {
             Column(Modifier.padding(18.dp)) {
                 Text("我的参观记录", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                if (updatedAt > 0L) {
+                    Text(
+                        SimpleDateFormat("yyyy年M月d日 HH:mm", Locale.CHINA).format(Date(updatedAt)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
-                    "写下这次参观的感想，拍下展厅里打动你的国宝。照片可以选择关联到对应国宝。",
+                    "写下这次参观的感想，拍下展厅里打动你的永禁文物。照片可以选择关联到对应文物。",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 6.dp),
                 )
@@ -128,9 +139,9 @@ fun MuseumVisitRecordSection(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("我的参观记录", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    if (record.updatedAt > 0L) {
+                    if (updatedAt > 0L) {
                         Text(
-                            SimpleDateFormat("yyyy年M月d日 HH:mm", Locale.CHINA).format(Date(record.updatedAt)),
+                            SimpleDateFormat("yyyy年M月d日 HH:mm", Locale.CHINA).format(Date(updatedAt)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -162,7 +173,7 @@ fun MuseumVisitRecordSection(
                     items(record.photos, key = { it.path }) { photo ->
                         VisitPhotoThumb(
                             photo = photo,
-                            relicName = photo.relicId?.let(relicNames::get) ?: "未关联国宝",
+                            relicName = photo.relicId?.let(relicNames::get) ?: "未关联文物",
                             onClick = { onPhotoClick(photo) },
                         )
                     }
@@ -226,7 +237,7 @@ fun VisitRecordSheet(
     presetRelicId: Int?,
     repository: MuseumRepository,
     museumId: String = museum,
-    /** 其他馆的国宝。默认只列本馆馆藏，出差看到别家的国宝再展开这里。 */
+    /** 其他馆的文物。默认只列本馆馆藏，出差看到别家的文物再展开这里。 */
     otherRelics: List<Relic> = emptyList(),
     onSave: (String, List<VisitPhoto>) -> Unit,
     onDismiss: () -> Unit,
@@ -300,8 +311,11 @@ fun VisitRecordSheet(
 
     ModalBottomSheet(
         // 关掉面板前兜底保存一次：用户很容易拍完直接下滑关掉，不能指望他记得点保存。
+        // 但内容没变化时不写，否则只是打开看一眼就会把上一次的记录日期刷成今天。
         onDismissRequest = {
-            runCatching { commit(silent = true) }
+            val savedPhotos = photos.map { VisitPhoto(it.path, it.relicId) }
+            val dirty = note != initialRecord.note || savedPhotos != initialRecord.photos
+            if (dirty) runCatching { commit(silent = true) }
             onDismiss()
         },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -338,7 +352,7 @@ fun VisitRecordSheet(
                     value = note,
                     onValueChange = { note = it },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 132.dp),
-                    placeholder = { Text("写下此刻的感想、展厅里印象最深的一件国宝……") },
+                    placeholder = { Text("写下此刻的感想、展厅里印象最深的一件文物……") },
                     shape = RoundedCornerShape(14.dp),
                 )
             }
@@ -376,7 +390,7 @@ fun VisitRecordSheet(
                         modifier = Modifier.padding(top = 18.dp, bottom = 3.dp),
                     )
                     Text(
-                        "关联后，照片会出现在对应国宝详情的轮播图里。",
+                        "关联后，照片会出现在对应文物详情的轮播图里。",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -406,7 +420,7 @@ fun VisitRecordSheet(
                                 ) {
                                     Icon(Icons.Outlined.Link, null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text(photo.relicId?.let(relicNames::get) ?: "选择关联国宝", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(photo.relicId?.let(relicNames::get) ?: "选择关联文物", maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }
                             IconButton(onClick = {
@@ -479,7 +493,7 @@ private fun PhotoAssociationDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("关联到哪件国宝？") },
+        title = { Text("关联到哪件文物？") },
         text = {
             LazyColumn(Modifier.heightIn(max = 420.dp)) {
                 item {
@@ -488,7 +502,7 @@ private fun PhotoAssociationDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(selected = currentRelicId == null, onClick = { onSelect(null) })
-                        Text("不关联国宝", modifier = Modifier.padding(start = 4.dp))
+                        Text("不关联文物", modifier = Modifier.padding(start = 4.dp))
                     }
                 }
                 itemsIndexed(relics, key = { _, relic -> relic.id }) { _, relic ->
@@ -502,8 +516,8 @@ private fun PhotoAssociationDialog(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(
-                                if (showOthers) "收起其他馆的国宝"
-                                else "在其他馆看到的国宝（${otherRelics.size}）",
+                                if (showOthers) "收起其他馆的文物"
+                                else "在其他馆看到的文物（${otherRelics.size}）",
                             )
                         }
                     }
@@ -514,7 +528,7 @@ private fun PhotoAssociationDialog(
                             value = otherQuery,
                             onValueChange = { otherQuery = it },
                             modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                            placeholder = { Text("搜国宝名或博物馆") },
+                            placeholder = { Text("搜文物名或博物馆") },
                             leadingIcon = { Icon(Icons.Outlined.Search, null) },
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
@@ -540,7 +554,7 @@ private fun PhotoAssociationDialog(
                     if (visibleOthers.isEmpty()) {
                         item {
                             Text(
-                                "没找到匹配的国宝",
+                                "没找到匹配的文物",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(vertical = 12.dp),

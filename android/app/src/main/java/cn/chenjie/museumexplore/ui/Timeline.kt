@@ -281,7 +281,7 @@ fun TimelineScreen(
             text = {
                 Text(
                     "这次参观的日期、感想和照片会删除。" +
-                        "已看到的国宝会保留，并继续计入你的已看到记录。",
+                        "已看到的文物会保留，并继续计入你的已看到记录。",
                 )
             },
             confirmButton = {
@@ -291,7 +291,7 @@ fun TimelineScreen(
                         deletingVisit = null
                         Toast.makeText(
                             context,
-                            "参观已删除，已看到的国宝记录已保留",
+                            "参观已删除，已看到的文物记录已保留",
                             Toast.LENGTH_LONG,
                         ).show()
                     },
@@ -763,7 +763,7 @@ private fun RelicThumb(relic: Relic, onClick: () -> Unit) {
         modifier = Modifier
             .width(104.dp)
             .clip(RoundedCornerShape(12.dp))
-            .semantics { contentDescription = "查看国宝 ${relic.name}" }
+            .semantics { contentDescription = "查看文物 ${relic.name}" }
             .clickable(onClick = onClick)
             .padding(bottom = 2.dp),
     ) {
@@ -978,7 +978,7 @@ private fun AnnualFootprint(
                         color = Color.White,
                     )
                     Text(
-                        "统计来自真实参观和已看到国宝记录，不以照片数量推算。",
+                        "统计来自真实参观和已看到文物记录，不以照片数量推算。",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = .84f),
                         modifier = Modifier.padding(top = 5.dp),
@@ -988,7 +988,7 @@ private fun AnnualFootprint(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         FootprintMetric("博物馆", footprint.museumCount, Modifier.weight(1f))
-                        FootprintMetric("国宝", footprint.relicCount, Modifier.weight(1f))
+                        FootprintMetric("文物", footprint.relicCount, Modifier.weight(1f))
                         FootprintMetric("城市", footprint.cityCount, Modifier.weight(1f))
                     }
                 }
@@ -1389,7 +1389,7 @@ private fun createFootprintBitmap(footprint: YearFootprint): Bitmap {
     canvas.drawText("这一年的博物馆记忆", 84f, 348f, paint)
 
     drawMetric(canvas, paint, 180f, 515f, footprint.museumCount, "到访博物馆", ink, muted)
-    drawMetric(canvas, paint, 540f, 515f, footprint.relicCount, "看到国宝", ink, muted)
+    drawMetric(canvas, paint, 540f, 515f, footprint.relicCount, "看到文物", ink, muted)
     drawMetric(canvas, paint, 900f, 515f, footprint.cityCount, "去过城市", ink, muted)
 
     paint.color = sand
@@ -1439,7 +1439,7 @@ private fun createFootprintBitmap(footprint: YearFootprint): Bitmap {
             paint,
         )
     }
-    canvas.drawText("仅包含博物馆、国宝与城市汇总数据", 80f, 1284f, paint)
+    canvas.drawText("仅包含博物馆、文物与城市汇总数据", 80f, 1284f, paint)
     return bitmap
 }
 

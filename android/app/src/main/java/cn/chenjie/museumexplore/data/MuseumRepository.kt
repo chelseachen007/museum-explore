@@ -248,16 +248,16 @@ class MuseumRepository(private val context: Context) {
     }
 
     /**
-     * 这座馆的所有参观记录，一次一条，最近的在前面。
+     * 这座馆的所有参观记录，一次到访一条，最近的在前面。
      *
      * 每次「再记一次参观」都是独立一条，详情页会并列成多张卡片——
-     * 只展示「最近一条有内容的」会让前几次的感想和照片看起来丢了。
+     * 只展示「有内容的」会让刚补的空到访看起来丢了，和上面的「已到访 N 次」对不上。
+     * 所以这里包含还没写感想/照片的到访，卡片自己负责空态。
      */
     fun museumRecords(museum: String): List<MuseumRecordWithDate> {
         val state = exploration()
         val visits = if (hasBranches(museum)) state.confirmedVisitsForMuseumFamily(museum) else state.confirmedVisitsForMuseum(museum)
-        return visits.filter { it.hasJournal }
-            .sortedWith(VISIT_ORDER)
+        return visits.sortedWith(VISIT_ORDER)
             .map { visit ->
                 MuseumRecordWithDate(
                     record = MuseumRecord(visit.note, visit.photos, visit.startedAt ?: 0L),

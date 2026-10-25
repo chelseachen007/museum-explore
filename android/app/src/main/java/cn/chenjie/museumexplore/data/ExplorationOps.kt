@@ -186,9 +186,9 @@ object ExplorationOps {
 
     private fun buildReason(candidate: MuseumCandidate, unseenWished: Int): String = when {
         candidate.openingStatus == OpeningStatus.CLOSED_TODAY -> "今天闭馆，可以先看看其他馆"
-        candidate.isWished && unseenWished > 0 -> "在你的想去清单里，还有 $unseenWished 件你想看的国宝"
+        candidate.isWished && unseenWished > 0 -> "在你的想去清单里，还有 $unseenWished 件你想看的文物"
         candidate.isWished -> "在你的想去清单里"
-        unseenWished > 0 -> "有 $unseenWished 件你想看的国宝"
+        unseenWished > 0 -> "有 $unseenWished 件你想看的文物"
         candidate.unseenRelicIds.isNotEmpty() -> "还有 ${candidate.unseenRelicIds.size} 件永禁文物没看过"
         candidate.visitCount > 0 -> "已经去过，可以再看一次"
         else -> "本城还没去过的馆"

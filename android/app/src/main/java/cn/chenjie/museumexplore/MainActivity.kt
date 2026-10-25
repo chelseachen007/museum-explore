@@ -164,7 +164,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private sealed class AppDestination(val route: String, val label: String) {
-    data object Collection : AppDestination("collection", "国宝")
+    data object Collection : AppDestination("collection", "文物")
     data object Map : AppDestination("map", "去哪")
     data object More : AppDestination("more", "更多")
 }
@@ -257,7 +257,7 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             // 主页面不在导航栈上，所以返回键不会被 NavHost 拦截。
-            // 在「去哪 / 更多」按返回先回到「国宝」，再按才退出应用。
+            // 在「去哪 / 更多」按返回先回到「文物」，再按才退出应用。
             BackHandler(enabled = selectedTab != 0 && (currentRoute.isEmpty() || currentRoute == "home")) {
                 selectedTab = 0
             }
@@ -285,7 +285,7 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
             // 左右滑动切 tab 已去掉：它和 LazyVerticalGrid / LazyColumn 的横向手势抢事件，
             // 表现就是「滑动时页面卡一下，然后跳到别的 tab」。底部导航已经够用。
             //
-            // 三个主页面（国宝 / 去哪 / 更多）不再进 NavHost 栈，由 selectedTab 切换；
+            // 三个主页面（文物 / 去哪 / 更多）不再进 NavHost 栈，由 selectedTab 切换；
             // 这里只放二级页，退出即回到当前 tab，不会因为栈被清空而白屏。
             NavHost(
                 navController = navController,
@@ -406,7 +406,7 @@ private fun LoadingScreen() {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("博物馆探索", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text("正在整理你的国宝清单…", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+            Text("正在整理你的永禁文物清单…", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -439,9 +439,9 @@ private fun CollectionScreen(
         }
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        PageHeader("THE COLLECTION · 195", "国宝总览", "标记真正看到过的国宝，也把想看的留给下一次。")
+        PageHeader("THE COLLECTION · 195", "永禁文物总览", "标记真正看到过的永禁文物，也把想看的留给下一次。")
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(query, { query = it }, Modifier.weight(1f), placeholder = { Text("搜索国宝") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = RoundedCornerShape(16.dp))
+            OutlinedTextField(query, { query = it }, Modifier.weight(1f), placeholder = { Text("搜索永禁文物") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = RoundedCornerShape(16.dp))
             Spacer(Modifier.width(8.dp))
             Box {
                 Button(
@@ -482,10 +482,10 @@ private fun CollectionScreen(
 }
 
 private enum class CollectionFilter(val label: String, val shortLabel: String) {
-    All("全部国宝", "全部"),
-    Seen("已看到的国宝", "已看到"),
-    Unseen("还没看到的国宝", "未看到"),
-    Wished("想看的国宝", "想看"),
+    All("全部永禁文物", "全部"),
+    Seen("已看到的永禁文物", "已看到"),
+    Unseen("还没看到的永禁文物", "未看到"),
+    Wished("想看的永禁文物", "想看"),
 }
 
 @Composable
@@ -574,7 +574,7 @@ private fun RelicDetailScreen(
     }
     var viewerImage by remember { mutableStateOf<GalleryImage?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).background(MaterialTheme.colorScheme.background)) {
-        PageHeader("‹ 返回国宝总览", relic.name, "${relic.era} · ${relic.category}", onBack)
+        PageHeader("‹ 返回永禁文物总览", relic.name, "${relic.era} · ${relic.category}", onBack)
         if (galleryImages.isNotEmpty()) {
             RelicImageCarousel(galleryImages, Modifier.padding(horizontal = 22.dp)) { viewerImage = it }
         } else {
@@ -637,7 +637,7 @@ private fun EmptyVisitRecordCard(onAdd: () -> Unit) {
         Column(Modifier.padding(18.dp)) {
             Text("我的参观记录", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(
-                "写下这次参观的感想，拍下展厅里打动你的国宝。照片可以选择关联到对应国宝。",
+                "写下这次参观的感想，拍下展厅里打动你的永禁文物。照片可以选择关联到对应文物。",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 6.dp),
             )
@@ -672,7 +672,7 @@ private fun LocationCard(relic: Relic, repository: MuseumRepository, onClick: ()
 private fun CityMuseumsScreen(repository: MuseumRepository, city: String, navController: NavHostController) {
     val museums = repository.museumNames(city)
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        PageHeader("CITY / $city", city, "已去过的馆优先 · 未去馆按国宝数量排序") { navController.popBackStack() }
+        PageHeader("CITY / $city", city, "已去过的馆优先 · 未去馆按永禁文物数量排序") { navController.popBackStack() }
         LazyColumn(contentPadding = PaddingValues(16.dp, 0.dp, 16.dp, 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(museums) { museum ->
                 MuseumRow(repository, city, museum) { navController.navigate("museum/${Uri.encode(city)}/${Uri.encode(museum)}") }
@@ -731,9 +731,10 @@ private fun MuseumDetailScreen(
     val hero = remember(relics) { relics.firstOrNull { !it.localImage.isNullOrBlank() || !it.image.isNullOrBlank() } ?: relics.firstOrNull() }
     var showRecordSheet by rememberSaveable(museum) { mutableStateOf(false) }
     var recordTarget by rememberSaveable(museum) { mutableStateOf<String?>(null) }
+    // 正在编辑哪一条到访；null 表示「新增」或者退回最近一条的旧行为。
+    var editingVisitId by rememberSaveable(museum) { mutableStateOf<String?>(null) }
     var showBranchPicker by rememberSaveable(museum) { mutableStateOf(false) }
     var showVisitDateDialog by rememberSaveable(museum) { mutableStateOf(false) }
-    var confirmRemoveVisit by remember(museum) { mutableStateOf(false) }
     var pendingDeleteRecord by remember(museum) { mutableStateOf<MuseumRecord?>(null) }
     var pendingOpenSheetAfterVisit by remember(museum) { mutableStateOf(false) }
     var viewerImage by remember { mutableStateOf<GalleryImage?>(null) }
@@ -806,13 +807,19 @@ private fun MuseumDetailScreen(
                 MuseumVisitRecordSection(
                     record = entry.record,
                     relicNames = relicNames,
-                    onEdit = { recordTarget = null; showRecordSheet = true },
+                    fallbackTime = visits.firstOrNull { it.id == entry.visitId }?.startedAt ?: 0L,
+                    onEdit = {
+                        // 编辑要落到卡片对应的那一次到访上，不能总是写最近一条。
+                        recordTarget = null
+                        editingVisitId = entry.visitId
+                        showRecordSheet = true
+                    },
                     onPhotoClick = { photo ->
                         val relicName = photo.relicId?.let(relicNames::get)
                         viewerImage = GalleryImage(
                             model = File(photo.path),
                             title = "我的照片",
-                            subtitle = relicName?.let { "关联：$it" } ?: "未关联国宝",
+                            subtitle = relicName?.let { "关联：$it" } ?: "未关联文物",
                         )
                     },
                     onDelete = if (entry.record.note.isNotBlank() || entry.record.photos.isNotEmpty()) {
@@ -825,12 +832,15 @@ private fun MuseumDetailScreen(
             }
         }
         if (records.isEmpty()) {
-            item { EmptyVisitRecordCard(onAdd = { if (hasBranches) showBranchPicker = true else { recordTarget = null; showRecordSheet = true } }) }
+            item { EmptyVisitRecordCard(onAdd = { if (hasBranches) showBranchPicker = true else { recordTarget = null; editingVisitId = null; showRecordSheet = true } }) }
         }
-        item { SectionLabel("馆藏国宝") }
-        items(relics, key = { it.id }) { relic ->
-            RelicCard(relic, repository.isCollected(relic.id)) { navController.navigate("relic/${relic.id}") }
-            Spacer(Modifier.height(10.dp))
+        // 没有馆藏文物的馆（自建馆、纯收藏机构）不显示这一栏，免得空着一片。
+        if (relics.isNotEmpty()) {
+            item { SectionLabel("馆藏永禁文物") }
+            items(relics, key = { it.id }) { relic ->
+                RelicCard(relic, repository.isCollected(relic.id)) { navController.navigate("relic/${relic.id}") }
+                Spacer(Modifier.height(10.dp))
+            }
         }
         item { Spacer(Modifier.height(20.dp)) }
     }
@@ -849,16 +859,22 @@ private fun MuseumDetailScreen(
     }
     if (showRecordSheet) {
         val branch = recordTarget
+        val editingId = editingVisitId
         // 选到具体馆区时，只回填那一片的记录；否则用整馆视角。
-        val sheetRecord = remember(revision, museum, branch) {
-            if (branch.isNullOrBlank()) {
-                // 多条到访时，回填有感想/照片的那条，不是简单取最新的一条空壳。
-                record
-            } else {
-                val state = repository.exploration()
-                val target = "$museum · $branch"
-                val visit = state.confirmedVisitsForMuseum(target).sortedWith(VISIT_ORDER).firstOrNull()
-                if (visit != null) MuseumRecord(visit.note, visit.photos, visit.startedAt ?: 0L) else MuseumRecord()
+        val sheetRecord = remember(revision, museum, branch, editingId) {
+            when {
+                // 从某张卡片进来的：就回填那一次到访，不能回填成最近一条。
+                editingId != null -> {
+                    val visit = repository.exploration().visit(editingId)
+                    if (visit != null) MuseumRecord(visit.note, visit.photos, visit.startedAt ?: 0L) else MuseumRecord()
+                }
+                branch.isNullOrBlank() -> record
+                else -> {
+                    val state = repository.exploration()
+                    val target = "$museum · $branch"
+                    val visit = state.confirmedVisitsForMuseum(target).sortedWith(VISIT_ORDER).firstOrNull()
+                    if (visit != null) MuseumRecord(visit.note, visit.photos, visit.startedAt ?: 0L) else MuseumRecord()
+                }
             }
         }
         VisitRecordSheet(
@@ -868,23 +884,31 @@ private fun MuseumDetailScreen(
             presetRelicId = null,
             repository = repository,
             museumId = if (branch.isNullOrBlank()) museum else "$museum · $branch",
-            // 出差时在别的馆看到国宝很常见：默认只给本馆几条，需要时再展开全量。
+            // 出差时在别的馆看到文物很常见：默认只给本馆几条，需要时再展开全量。
             otherRelics = remember(relics) {
                 val own = relics.mapTo(HashSet()) { it.id }
                 repository.relics().filterNot { it.id in own }
             },
-            onSave = { note, photos -> viewModel.saveBranchRecord(museum, branch, note, photos) },
-            onDismiss = { showRecordSheet = false },
+            onSave = { note, photos ->
+                if (editingId != null) {
+                    viewModel.updateVisitJournal(editingId, note, photos)
+                } else {
+                    viewModel.saveBranchRecord(museum, branch, note, photos)
+                }
+            },
+            onDismiss = { showRecordSheet = false; editingVisitId = null },
         )
     }
     if (showVisitDateDialog) {
         VisitDateDialog(
             onConfirm = { startedAt ->
-                viewModel.addVisit(museum, startedAt)
+                val created = viewModel.addVisit(museum, startedAt)
                 showVisitDateDialog = false
                 if (pendingOpenSheetAfterVisit) {
                     pendingOpenSheetAfterVisit = false
                     recordTarget = null
+                    // 补的这次到访还没内容，直接把面板指向它，写完就落在这张卡片上。
+                    editingVisitId = created.id
                     showRecordSheet = true
                 }
             },
@@ -895,7 +919,7 @@ private fun MuseumDetailScreen(
         AlertDialog(
             onDismissRequest = { pendingDeleteRecord = null },
             title = { Text("删除这条记录？") },
-            text = { Text("会删掉这条的感想和照片，已看到的国宝和到访次数都保留。") },
+            text = { Text("会删掉这条的感想和照片，已看到的文物和到访次数都保留。") },
             confirmButton = {
                 TextButton(onClick = {
                     target.photos.forEach { runCatching { repository.deletePhoto(it.path) } }
@@ -906,24 +930,6 @@ private fun MuseumDetailScreen(
                 }
             },
             dismissButton = { TextButton(onClick = { pendingDeleteRecord = null }) { Text("保留") } },
-        )
-    }
-    if (confirmRemoveVisit) {
-        AlertDialog(
-            onDismissRequest = { confirmRemoveVisit = false },
-            title = { Text("删除这条记录？") },
-            text = { Text("会删掉这里的感想和照片，已看到的国宝和到访次数都保留。") },
-            confirmButton = {
-                TextButton(onClick = {
-                    // 只清记录，不动到访：两者是两件事，删记录不该让「已到访 N 次」变小。
-                    record.photos.forEach { runCatching { repository.deletePhoto(it.path) } }
-                    viewModel.saveBranchRecord(museum, null, "", emptyList())
-                    confirmRemoveVisit = false
-                }) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = { TextButton(onClick = { confirmRemoveVisit = false }) { Text("保留") } },
         )
     }
     ImageViewerDialog(viewerImage) { viewerImage = null }
@@ -1439,7 +1445,7 @@ private fun InfoDialog(title: String, message: String, onDismiss: () -> Unit) { 
  * 切底部 tab。
  *
  * saveState / restoreState 必须打开：原来的写法每次切 tab 都把上一个页面的组合状态整个丢掉，
- * 回到「国宝」时重新构建两百多张卡片，这就是切换时那一顿的来源。
+ * 回到「文物」时重新构建两百多张卡片，这就是切换时那一顿的来源。
  */
 private fun navigateTab(navController: NavHostController, route: String) {
     if (navController.currentDestination?.route == route) return

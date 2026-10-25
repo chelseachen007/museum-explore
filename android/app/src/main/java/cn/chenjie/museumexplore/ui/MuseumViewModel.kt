@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import cn.chenjie.museumexplore.data.MuseumRepository
 import cn.chenjie.museumexplore.model.MuseumRecord
+import cn.chenjie.museumexplore.model.Visit
 import cn.chenjie.museumexplore.model.VisitPhoto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +26,11 @@ class MuseumViewModel(application: Application) : AndroidViewModel(application) 
     fun setMuseumWished(name: String, value: Boolean) { repository.setMuseumWished(name, value); refresh() }
 
     /** 补录一次参观；日期不确定时传 null，时间线显示「日期待补充」。 */
-    fun addVisit(museum: String, startedAt: Long?) { repository.addVisit(museum, startedAt); refresh() }
+    fun addVisit(museum: String, startedAt: Long?): Visit {
+        val visit = repository.addVisit(museum, startedAt)
+        refresh()
+        return visit
+    }
 
     fun setVisitDate(visitId: String, startedAt: Long): Boolean {
         val ok = repository.setVisitDate(visitId, startedAt)
