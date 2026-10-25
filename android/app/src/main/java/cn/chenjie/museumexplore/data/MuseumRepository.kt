@@ -8,14 +8,19 @@ import androidx.core.content.FileProvider
 import cn.chenjie.museumexplore.model.CitySummary
 import cn.chenjie.museumexplore.model.DatePrecision
 import cn.chenjie.museumexplore.model.ExplorationState
+import cn.chenjie.museumexplore.model.MuseumBranch
 import cn.chenjie.museumexplore.model.MuseumCandidate
+import cn.chenjie.museumexplore.model.MuseumEntry
 import cn.chenjie.museumexplore.model.MuseumInfo
 import cn.chenjie.museumexplore.model.MuseumRecord
+import cn.chenjie.museumexplore.model.MuseumSource
 import cn.chenjie.museumexplore.model.OfficialEntry
 import cn.chenjie.museumexplore.model.RecordSource
 import cn.chenjie.museumexplore.model.Relic
+import cn.chenjie.museumexplore.model.UserMuseum
 import cn.chenjie.museumexplore.model.Visit
 import cn.chenjie.museumexplore.model.VisitPhoto
+import cn.chenjie.museumexplore.model.VisitTarget
 import cn.chenjie.museumexplore.model.VISIT_ORDER
 import org.json.JSONArray
 import org.json.JSONObject
@@ -33,14 +38,30 @@ import java.util.zip.ZipOutputStream
 class MuseumRepository(private val context: Context) {
     private val preferences: SharedPreferences = context.getSharedPreferences("museum_records", Context.MODE_PRIVATE)
     private val relics: List<Relic> by lazy { readRelics() }
-    private val museumInfo: Map<String, MuseumInfo> by lazy { readMuseums() }
     private val officialEntryMap: Map<String, OfficialEntry> by lazy { readOfficialEntries() }
+    private val baseMuseumInfo: Map<String, MuseumInfo> by lazy { readMuseums() }
+    private val builtInBranches: List<MuseumBranch> by lazy { readBranches() }
     private val photosDir: File
         get() = File(context.filesDir, PHOTO_DIR).apply { mkdirs() }
     private var cachedState: ExplorationState? = null
+    private var cachedUserMuseums: List<UserMuseum>? = null
+    private var cachedDirectory: MuseumDirectory? = null
+
+    /** 内置馆 + 用户自建馆 + 参观过但两边都没有的馆，三者合成的最终视图。 */
+    private data class MuseumDirectory(
+        val info: Map<String, MuseumInfo>,
+        val branches: Map<String, List<MuseumBranch>>,
+        /** 被并入某个父馆的老记录馆名 → 父馆名。老记录仍然能正确归位。 */
+        val aliases: Map<String, String>,
+        /** 用户自建馆名，用于列表排序和来源标记。 */
+        val userNames: Set<String>,
+        val branchParents: Set<String>,
+    ) {
+        fun canonical(name: String): String = aliases[name] ?: name
+    }
 
     fun relics(): List<Relic> = relics
-    fun museums(): Map<String, MuseumInfo> = museumInfo
+    fun museums(): Map<String, MuseumInfo> = directory().info
     fun officialEntry(museum: String): OfficialEntry? = officialEntryMap[museum]
     fun note(id: Int): String = preferences.getString("note:$id", "").orEmpty()
     fun lastPhoto(): String = preferences.getString("lastPhoto", "").orEmpty()
@@ -203,12 +224,53 @@ class MuseumRepository(private val context: Context) {
     // ---------------------------------------------------------------------
 
     fun museumRecord(museum: String): MuseumRecord {
-        val visit = exploration().confirmedVisitsForMuseum(museum).sortedWith(VISIT_ORDER).firstOrNull()
-        return if (visit != null && visit.hasJournal) {
+        val state = exploration()
+        // 整馆视角：父馆和它所有馆区里最近一条有内容的记录，都会出现在这一页。
+        val visits = if (hasBranches(museum)) state.confirmedVisitsForMuseumFamily(museum) else state.confirmedVisitsForMuseum(museum)
+        val visit = visits.filter { it.hasJournal }.sortedWith(VISIT_ORDER).firstOrNull()
+        return if (visit != null) {
             MuseumRecord(visit.note, visit.photos, visit.startedAt ?: 0L)
         } else {
             legacyRecord(museum)
         }
+    }
+
+    /**
+     * 保存某一馆区的记录。
+     *
+     * 父馆本身不写 journal（它就是「整馆」这个虚拟目标），内容一律落到具体馆区；
+     * 没配馆区的馆照旧用馆名当 museumId。
+     */
+    fun saveBranchRecord(
+        museum: String,
+        branch: String? = null,
+        note: String,
+        photos: List<VisitPhoto>,
+        targetId: String = if (branch.isNullOrBlank()) museum else "$museum · $branch",
+    ) {
+        val state = exploration()
+        val existing = state.confirmedVisitsForMuseum(targetId).sortedWith(VISIT_ORDER).firstOrNull()
+            ?: state.visitsForMuseum(targetId).firstOrNull { it.pendingConfirmation }
+        if (existing != null) {
+            updateVisitJournal(existing.id, note, photos)
+            return
+        }
+        val draft = ExplorationOps.addVisit(
+            state,
+            museumId = targetId,
+            city = cityOfMuseum(museum),
+            startedAt = null,
+            precision = DatePrecision.UNKNOWN,
+            source = RecordSource.MANUAL,
+            idFactory = ::newId,
+        ).second
+        saveExploration(
+            state.copy(
+                visits = (state.visits + draft).map {
+                    if (it.id == draft.id) it.copy(pendingConfirmation = true, note = note.trim(), photos = photos) else it
+                },
+            ),
+        )
     }
 
     fun saveMuseumRecord(museum: String, note: String, photos: List<VisitPhoto>) {
@@ -301,39 +363,236 @@ class MuseumRepository(private val context: Context) {
 
     fun collectedCount(): Int = relics.count { isCollected(it.id) }
 
-    fun museumNames(city: String): List<String> = relics
-        .filter { it.city == city }
-        .flatMap { splitMuseumNames(it.museum) }
-        .distinct()
-        .sortedWith(compareByDescending<String> { relicCount(it) }.thenBy { it })
-
-    fun allMuseumNames(): List<String> = museumInfo.keys.sorted()
-
-    fun cities(): List<CitySummary> = relics.groupBy { it.city }.map { (city, cityRelics) ->
-        val museums = museumNames(city)
-        CitySummary(city, museums.size, cityRelics.size, museums.count(::isVisited))
-    }.sortedByDescending { it.relicCount }
-
-    fun relicsForMuseum(city: String, museum: String): List<Relic> = relics.filter {
-        it.city == city && splitMuseumNames(it.museum).contains(museum)
+    /**
+     * 某座城市里可以去的博物馆名。
+     *
+     * 三个来源合并：195 件文物名单派生的馆、内置馆清单、用户自己新增的馆。
+     * 参观记录里的馆名也会进来——否则用户自己建的馆在改名或删数据后会「消失」，
+     * 但记录还在时间线里，点进去就是一篇空白。
+     */
+    fun museumNames(city: String): List<String> {
+        val directory = directory()
+        val cityKeys = cityKeysOf(city)
+        // 热点城市只列「本批线索 + 有国宝的馆 + 我记过的馆」。
+        // 全量名录是几百家海外国立馆，塞进单个城市列表会把它变成通讯录，想去哪儿反而找不到。
+        val fromDirectory = directory.info.values
+            .filter { cityKeys.contains(it.city) }
+            .filter { info ->
+                info.type == "user_added" ||
+                    directory.userNames.contains(info.name) ||
+                    relicCount(info.name) > 0 ||
+                    exploration().visits.any { it.museumId == info.name }
+            }
+            .map { it.name }
+        val fromVisits = exploration().visits
+            .map { directory.canonical(it.museumId) }
+            .filter { cityKeys.contains(cityOfMuseum(it)) }
+        return (fromDirectory + fromVisits)
+            .distinct()
+            .filterNot { directory.branchParents.contains(it) }
+            .sortedWith(compareByDescending<String> { relicCount(it) }.thenBy { it })
     }
 
-    fun relicsForMuseum(museum: String): List<Relic> = relics.filter {
-        splitMuseumNames(it.museum).contains(museum)
+    fun allMuseumNames(): List<String> = directory().info.keys
+        .filterNot { directory().branchParents.contains(it) }
+        .sorted()
+
+    fun cities(): List<CitySummary> {
+        val directory = directory()
+        val cityMuseums = linkedMapOf<String, MutableSet<String>>()
+        relics.groupBy { it.city }.forEach { (city, cityRelics) -> cityMuseums.getOrPut(city) { linkedSetOf() } }
+        directory.info.values.filterNot { directory.branchParents.contains(it.name) }.forEach { info ->
+            cityMuseums.getOrPut(info.city) { linkedSetOf() }.add(info.name)
+        }
+        return cityMuseums.map { (city, museums) ->
+            CitySummary(
+                name = city,
+                museumCount = museums.size,
+                relicCount = relics.count { it.city == city },
+                visitedCount = museums.count(::isVisited),
+            )
+        }.sortedWith(compareByDescending<CitySummary> { it.relicCount }.thenByDescending { it.museumCount })
     }
 
-    fun relicCount(museum: String): Int = relics.count { splitMuseumNames(it.museum).contains(museum) }
+    fun relicsForMuseum(city: String, museum: String): List<Relic> {
+        val keys = canonicalKeys(museum)
+        return relics.filter {
+            it.city == city && splitMuseumNames(it.museum).any(keys::contains)
+        }
+    }
+
+    fun relicsForMuseum(museum: String): List<Relic> {
+        val keys = canonicalKeys(museum)
+        return relics.filter {
+            splitMuseumNames(it.museum).any(keys::contains)
+        }
+    }
+
+    fun relicCount(museum: String): Int = relicsForMuseum(museum).size
     fun relicCountForLocations(raw: String): Int = splitMuseumNames(raw).sumOf(::relicCount)
-    fun museumInfo(name: String): MuseumInfo? = museumInfo[name]
-    fun cityOfMuseum(name: String): String = museumInfo[name]?.city
-        ?: relics.firstOrNull { splitMuseumNames(it.museum).contains(name) }?.city
-        ?: ""
+    fun museumInfo(name: String): MuseumInfo? = directory().info[name]
+
+    fun cityOfMuseum(name: String): String {
+        val directory = directory()
+        val keys = canonicalKeys(name)
+        // 先看名字本身，父馆名不能直接折到第一个馆区去（否则「浙江省博物馆」会变成之江馆的城市）。
+        return directory.info[name]?.city
+            ?: directory.branches[directory.canonical(name)]?.firstOrNull()?.city
+            ?: directory.info[directory.canonical(name)]?.city
+            ?: relics.firstOrNull { relic ->
+                relic.city.isNotBlank() && splitMuseumNames(relic.museum).any(keys::contains)
+            }?.city
+            ?: exploration().visits.firstOrNull { keys.contains(directory.canonical(it.museumId)) }?.city
+            ?: ""
+    }
+
+    // ---------------------------------------------------------------------
+    // 博物馆目录：分馆、自建馆
+    // ---------------------------------------------------------------------
+
+    /** 某座馆下的馆区（分馆）。整馆本身可作为「不限馆区」的选项由界面自行补上。 */
+    fun branches(museum: String): List<MuseumBranch> {
+        val directory = directory()
+        val parent = directory.canonical(museum)
+        return directory.branches[parent].orEmpty()
+    }
+
+    /** 这座馆是否拆成了多个馆区——拆过的馆，记录参观时必须选清楚去的是哪一片。 */
+    fun hasBranches(museum: String): Boolean = branches(museum).isNotEmpty()
+
+    /** 记录参观时可选的目标：整馆 + 每个馆区。 */
+    fun visitTargets(museum: String): List<VisitTarget> {
+        val directory = directory()
+        val parent = directory.canonical(museum)
+        val city = cityOfMuseum(parent)
+        return buildList {
+            add(VisitTarget(parent, null, city))
+            branches(parent).forEach { branch -> add(VisitTarget(parent, branch.name, city)) }
+        }
+    }
+
+    fun userMuseums(): List<UserMuseum> {
+        cachedUserMuseums?.let { return it }
+        val loaded = UserMuseumsCodec.decode(preferences.getString(USER_MUSEUMS_KEY, null))
+        cachedUserMuseums = loaded
+        return loaded
+    }
+
+    fun isUserMuseum(name: String): Boolean = userMuseums().any { it.name == name && !it.isMerged }
+
+    /** 新增一座博物馆。同名内置馆已存在时直接返回 false，交给界面提示用户。 */
+    fun addUserMuseum(name: String, city: String, officialUrl: String? = null, address: String? = null, notes: String? = null): Boolean {
+        val cleanName = name.trim()
+        if (cleanName.isBlank()) return false
+        if (directory().info.containsKey(cleanName)) return false
+        val added = UserMuseum(
+            name = cleanName,
+            city = city.trim(),
+            officialUrl = officialUrl?.trim()?.takeIf { it.isNotEmpty() },
+            address = address?.trim()?.takeIf { it.isNotEmpty() },
+            notes = notes?.trim()?.takeIf { it.isNotEmpty() },
+            createdAt = System.currentTimeMillis(),
+        )
+        saveUserMuseums(userMuseums() + added)
+        return true
+    }
+
+    fun updateUserMuseum(name: String, city: String, officialUrl: String?, address: String?, notes: String?): Boolean {
+        val current = userMuseums()
+        val index = current.indexOfFirst { it.name == name && !it.isMerged }
+        if (index < 0) return false
+        val updated = current[index].copy(
+            city = city.trim(),
+            officialUrl = officialUrl?.trim()?.takeIf { it.isNotEmpty() },
+            address = address?.trim()?.takeIf { it.isNotEmpty() },
+            notes = notes?.trim()?.takeIf { it.isNotEmpty() },
+        )
+        saveUserMuseums(current.toMutableList().also { it[index] = updated })
+        return true
+    }
+
+    fun removeUserMuseum(name: String) {
+        saveUserMuseums(userMuseums().filterNot { it.name == name })
+    }
+
+    /** 改过一次名之后，老记录还挂在旧名上，这里把旧名指回新名字。 */
+    fun renameUserMuseum(oldName: String, newName: String): Boolean {
+        val target = newName.trim()
+        if (target.isBlank() || target == oldName) return false
+        val current = userMuseums()
+        val index = current.indexOfFirst { it.name == oldName && !it.isMerged }
+        if (index < 0) return false
+        if (current.any { it.name == target } || baseMuseumInfo.containsKey(target)) return false
+        saveUserMuseums(current.toMutableList().also { it[index] = it[index].copy(name = target) })
+        remapVisitMuseumNames(mapOf(oldName to target))
+        return true
+    }
+
+    /**
+     * 把名字相近的馆合并成一个「父馆 + 馆区」结构。
+     *
+     * 用户实际会说出「浙江省博物馆之江馆区」这种带馆区的名字；如果不合并，
+     * 同一座馆会散成好几条记录，年度足迹和到访次数全乱。合并后：
+     * - [selected] 这两个馆名不再作为独立馆出现；
+     * - 它们的历史参观记录按 [trimSuffixes] 规则翻译成「父馆 · 馆区」；
+     * - 用户自建的那条馆会被标记 mergedInto，不再重复出现在列表里。
+     */
+    fun mergeMuseums(
+        parentName: String,
+        parentCity: String,
+        members: List<Pair<String, String>>,
+        trimSuffixes: List<String>,
+    ): Boolean {
+        val parent = parentName.trim()
+        if (parent.isBlank() || members.isEmpty()) return false
+        val cleaned = members
+            .map { (name, branch) -> name.trim() to branch.trim() }
+            .filter { (name, branch) -> name.isNotEmpty() && branch.isNotEmpty() }
+            .filter { (name, _) -> name != parent }
+        if (cleaned.isEmpty()) return false
+        val parentCityName = parentCity.trim().ifBlank { locationCity(parent) }
+        val overrides = JSONObject()
+        readMergeOverrides().forEach { (key, value) -> overrides.put(key, value) }
+        overrides.put(
+            parent,
+            JSONObject()
+                .put("city", parentCityName)
+                .put("trimSuffixes", JSONArray(trimSuffixes.filter { it.isNotBlank() }))
+                .put(
+                    "branches",
+                    JSONArray().apply {
+                        cleaned.forEach { (name, branch) ->
+                            put(
+                                JSONObject()
+                                    .put("name", name)
+                                    .put("branch", branch)
+                                    .put("parent", parent),
+                            )
+                        }
+                    },
+                ),
+        )
+        preferences.edit().putString(MERGE_OVERRIDES_KEY, overrides.toString()).apply()
+        // 用户自建的同名馆并进父馆，避免列表里出现两个「浙江省博物馆」。
+        saveUserMuseums(
+            userMuseums().map { museum ->
+                if (cleaned.any { it.first == museum.name } || museum.name == parent) museum.copy(mergedInto = parent) else museum
+            },
+        )
+        val mergedNames = buildMap {
+            put(parent, parent)
+            cleaned.forEach { (name, _) -> put(name, parent) }
+        }
+        remapVisitMuseumNames(mergedNames)
+        invalidateDirectory()
+        return true
+    }
 
     /** 下一站候选。开放状态只从已核验文本推断，推断不出就是待确认。 */
     fun nextStopCandidates(city: String, nowMillis: Long = System.currentTimeMillis()): List<MuseumCandidate> {
         val state = exploration()
         return museumNames(city).mapNotNull { museum ->
-            val info = museumInfo[museum] ?: return@mapNotNull null
+            val info = directory().info[museum] ?: return@mapNotNull null
             if (info.openToPublic == false) return@mapNotNull null
             // 高校、研究院这类收藏机构不在「今天去哪」里推荐：它们通常不对公众开放。
             if (info.type == "collection_institution" && info.openToPublic != true) return@mapNotNull null
@@ -364,7 +623,7 @@ class MuseumRepository(private val context: Context) {
         records.put(EXPLORATION_KEY, ExplorationCodec.encode(exploration()))
         val manifest = JSONObject()
             .put("schemaVersion", 2)
-            .put("appVersion", "0.6.0")
+            .put("appVersion", "0.7.0")
             .put("exportedAt", System.currentTimeMillis())
             .put("description", "包含想去、到访、看到、参观时间线、照片、感想和设置。")
         ZipOutputStream(output).use { zip ->
@@ -434,6 +693,221 @@ class MuseumRepository(private val context: Context) {
     // ---------------------------------------------------------------------
     // 内部
     // ---------------------------------------------------------------------
+
+    private fun directory(): MuseumDirectory {
+        cachedDirectory?.let { return it }
+        val userMuseums = userMuseums().filterNot { it.isMerged }
+        val merged = HashMap(baseMuseumInfo)
+        userMuseums.forEach { user ->
+            merged[user.name] = MuseumInfo(
+                name = user.name,
+                city = user.city,
+                officialUrl = user.officialUrl,
+                wechat = null,
+                address = user.address,
+                intro = user.notes,
+                openingHours = null,
+                closedDays = null,
+                reservation = null,
+                wikiUrl = null,
+                miniProgram = null,
+                openToPublic = null,
+                type = "user_added",
+                verifiedAt = null,
+                status = "user",
+            )
+        }
+        val branches = builtInBranches.groupBy { it.parent }
+        val aliases = HashMap<String, String>()
+        val branchParents = HashSet<String>()
+        branches.forEach { (parent, children) ->
+            branchParents.add(parent)
+            children.forEach { child -> aliases[child.name] = parent }
+        }
+        val directory = MuseumDirectory(
+            info = merged,
+            branches = branches,
+            aliases = aliases,
+            userNames = userMuseums.map { it.name }.toSet(),
+            branchParents = branchParents,
+        )
+        cachedDirectory = directory
+        return directory
+    }
+
+    private fun invalidateDirectory() {
+        cachedDirectory = null
+    }
+
+    private fun saveUserMuseums(list: List<UserMuseum>) {
+        cachedUserMuseums = list
+        preferences.edit().putString(USER_MUSEUMS_KEY, UserMuseumsCodec.encode(list)).apply()
+        invalidateDirectory()
+    }
+
+    /**
+     * 内置清单 + 用户自建馆以外的补充清单一起读进来。
+     *
+     * 三个资产文件字段一致，缺 [city] 的条目按省份/国家兜底，避免它们挤在空字符串城市里。
+     */
+    private fun readMuseums(): Map<String, MuseumInfo> = runCatching {
+        val result = LinkedHashMap<String, MuseumInfo>()
+        ASSET_FILES.forEach { asset ->
+            runCatching {
+                val json = JSONObject(readAsset(asset))
+                val items = json.optJSONArray("museums") ?: json.optJSONArray("muweums") ?: JSONArray()
+                for (index in 0 until items.length()) {
+                    val info = parseMuseumInfo(items.getJSONObject(index)) ?: continue
+                    result.putIfAbsent(info.name, info)
+                }
+            }
+        }
+        result
+    }.getOrDefault(emptyMap())
+
+    private fun parseMuseumInfo(item: JSONObject): MuseumInfo? {
+        val name = cleanDisplay(item.optString("name"))
+        if (name.isBlank()) return null
+        val city = cleanDisplay(item.optString("city"))
+            .ifBlank { cleanDisplay(item.optString("province")) }
+            .ifBlank { cleanDisplay(item.optString("country")) }
+            .ifBlank { "未分城市" }
+        return MuseumInfo(
+            name = name,
+            city = city,
+            officialUrl = item.optionalString("officialUrl"),
+            wechat = cleanDisplay(item.optString("wechat")).takeIf { it.isNotBlank() },
+            address = cleanDisplay(item.optString("address")).takeIf { it.isNotBlank() },
+            intro = cleanDisplay(item.optString("intro")).takeIf { it.isNotBlank() },
+            openingHours = cleanDisplay(item.optString("openingHours")).takeIf { it.isNotBlank() },
+            closedDays = cleanDisplay(item.optString("closedDays")).takeIf { it.isNotBlank() },
+            reservation = cleanDisplay(item.optString("reservation")).takeIf { it.isNotBlank() },
+            wikiUrl = item.optionalString("wikiUrl"),
+            miniProgram = cleanDisplay(item.optString("miniProgram")).takeIf { it.isNotBlank() },
+            // 没有明确标注开放性的馆，宁可标成「待确认」也不要默认开放。
+            openToPublic = if (item.has("openToPublic") && !item.isNull("openToPublic")) {
+                item.optBoolean("openToPublic", true)
+            } else {
+                null
+            },
+            type = item.optionalString("type"),
+            verifiedAt = item.optionalString("verifiedAt"),
+            status = item.optionalString("status"),
+        )
+    }
+
+    /**
+     * 馆区配置来自两处：内置资产 + 用户手动合并的覆盖。
+     *
+     * 用户覆盖优先——内置配置可能不全，但用户亲手合并过的一定是他真实去过的那几片。
+     */
+    private fun readBranches(): List<MuseumBranch> = runCatching {
+        val result = LinkedHashMap<String, MuseumBranch>()
+        fun add(parent: String, city: String, branch: MuseumBranch) {
+            result.putIfAbsent("$parent|${branch.name}", branch)
+        }
+        runCatching {
+            val json = JSONObject(readAsset(BRANCHES_ASSET))
+            val items = json.optJSONArray("museums") ?: JSONArray()
+            for (index in 0 until items.length()) {
+                val museum = items.getJSONObject(index)
+                val parent = cleanDisplay(museum.optString("parent"))
+                if (parent.isBlank()) continue
+                val city = cleanDisplay(museum.optString("city")).ifBlank { locationCity(parent) }
+                val branches = museum.optJSONArray("branches") ?: JSONArray()
+                for (branchIndex in 0 until branches.length()) {
+                    val branch = branches.getJSONObject(branchIndex)
+                    val name = cleanDisplay(branch.optString("name")).ifBlank {
+                        cleanDisplay(branch.optString("branch"))
+                    }
+                    if (name.isBlank()) continue
+                    add(
+                        parent,
+                        city,
+                        MuseumBranch(
+                            parent = parent,
+                            name = name,
+                            city = city,
+                            address = cleanDisplay(branch.optString("address")).takeIf { it.isNotBlank() },
+                        ),
+                    )
+                }
+            }
+        }
+        readMergeOverrides().forEach { (parent, override) ->
+            val city = cleanDisplay(override.optString("city")).ifBlank { locationCity(parent) }
+            val branches = override.optJSONArray("branches") ?: JSONArray()
+            for (index in 0 until branches.length()) {
+                val branch = branches.getJSONObject(index)
+                val name = cleanDisplay(branch.optString("branch"))
+                    .ifBlank { cleanDisplay(branch.optString("name")) }
+                if (name.isBlank()) continue
+                add(
+                    parent,
+                    city,
+                    MuseumBranch(
+                        parent = parent,
+                        name = name,
+                        city = city,
+                        address = cleanDisplay(branch.optString("address")).takeIf { it.isNotBlank() },
+                    ),
+                )
+            }
+        }
+        result.values.toList()
+    }.getOrDefault(emptyList())
+
+    private fun readMergeOverrides(): Map<String, JSONObject> = runCatching {
+        val raw = preferences.getString(MERGE_OVERRIDES_KEY, null) ?: return emptyMap()
+        val json = JSONObject(raw)
+        buildMap {
+            json.keys().forEach { key ->
+                json.optJSONObject(key)?.let { put(key, it) }
+            }
+        }
+    }.getOrDefault(emptyMap())
+
+    /** 合并后把历史参观记录里的旧馆名翻译成「父馆」，否则老记录会挂在已经不存在的馆名下。 */
+    private fun remapVisitMuseumNames(mapping: Map<String, String>) {
+        if (mapping.isEmpty()) return
+        val state = exploration()
+        val updated = state.visits.map { visit ->
+            val target = mapping[visit.museumId] ?: return@map visit
+            if (target == visit.museumId) visit else visit.copy(museumId = target)
+        }
+        if (updated != state.visits) saveExploration(state.copy(visits = updated))
+    }
+
+    /** 城市比较用去空格、去「市/省」后缀的形式，避免「杭州市」和「杭州」分裂成两座城。 */
+    private fun cityKeysOf(city: String): Set<String> {
+        val trimmed = city.trim()
+        if (trimmed.isEmpty()) return emptySet()
+        return setOf(trimmed, trimmed.removeSuffix("市"), trimmed.removeSuffix("省"))
+            .filter { it.isNotEmpty() }
+            .toSet()
+    }
+
+    /** 一个馆名可能由多条记录共用（「A、B」），统一展开成可比较的键集合。 */
+    private fun canonicalKeys(museum: String): Set<String> {
+        val directory = directory()
+        return splitMuseumNames(museum)
+            .flatMap { name -> listOf(name, directory.canonical(name)) }
+            .toSet()
+    }
+
+    /**
+     * 只从资产文件推断馆所在城市，不碰目录缓存。
+     *
+     * 供 readMuseums / readBranches 自己用：那两个方法正是目录缓存的构建过程，
+     * 在里面回调 cityOfMuseum 会无限递归。
+     */
+    private fun locationCity(name: String): String {
+        baseMuseumInfo[name]?.city?.takeIf { it.isNotBlank() }?.let { return it }
+        val keys = splitMuseumNames(name).toSet()
+        return relics.firstOrNull { relic ->
+            relic.city.isNotBlank() && splitMuseumNames(relic.museum).any(keys::contains)
+        }?.city.orEmpty()
+    }
 
     private fun saveExploration(state: ExplorationState) {
         cachedState = state
@@ -575,33 +1049,6 @@ class MuseumRepository(private val context: Context) {
         }
     }.getOrDefault(emptyList())
 
-    private fun readMuseums(): Map<String, MuseumInfo> = runCatching {
-        val json = JSONObject(readAsset("museums.json"))
-        val items = json.getJSONArray("museums")
-        buildMap {
-            for (index in 0 until items.length()) {
-                val item = items.getJSONObject(index)
-                val museum = MuseumInfo(
-                    name = cleanDisplay(item.optString("name")),
-                    city = cleanDisplay(item.optString("city")),
-                    officialUrl = item.optionalString("officialUrl"),
-                    wechat = cleanDisplay(item.optString("wechat")).takeIf { it.isNotBlank() },
-                    address = cleanDisplay(item.optString("address")).takeIf { it.isNotBlank() },
-                    intro = cleanDisplay(item.optString("intro")).takeIf { it.isNotBlank() },
-                    openingHours = cleanDisplay(item.optString("openingHours")).takeIf { it.isNotBlank() },
-                    closedDays = cleanDisplay(item.optString("closedDays")).takeIf { it.isNotBlank() },
-                    reservation = cleanDisplay(item.optString("reservation")).takeIf { it.isNotBlank() },
-                    wikiUrl = item.optionalString("wikiUrl"),
-                    miniProgram = cleanDisplay(item.optString("miniProgram")).takeIf { it.isNotBlank() },
-                    openToPublic = if (item.has("openToPublic")) item.optBoolean("openToPublic", true) else null,
-                    type = item.optionalString("type"),
-                    verifiedAt = item.optionalString("verifiedAt"),
-                    status = item.optionalString("status"),
-                )
-                put(museum.name, museum)
-            }
-        }
-    }.getOrDefault(emptyMap())
 
     private fun readOfficialEntries(): Map<String, OfficialEntry> = runCatching {
         val json = JSONObject(readAsset("official_entries.json"))
@@ -653,5 +1100,11 @@ class MuseumRepository(private val context: Context) {
         const val LEGACY_BACKUP_KEY = "legacy_backup_v051"
         const val PHOTO_DIR = "visit_photos"
         val PHOTO_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "heic", "heif")
+        const val USER_MUSEUMS_KEY = "user_museums_v1"
+        const val MERGE_OVERRIDES_KEY = "museum_merge_overrides_v1"
+        const val BRANCHES_ASSET = "museum_branches.json"
+
+        /** 依次读取，同名馆以先读到的为准。 */
+        val ASSET_FILES = listOf("museums.json", "museums_cn.json", "museums_overseas.json")
     }
 }
