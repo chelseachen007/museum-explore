@@ -658,7 +658,7 @@ private fun VisitTimelineCard(
 
             if (seenRelics.isNotEmpty()) {
                 Text(
-                    "本次看到 ${seenRelics.size} 件 195 永禁文物",
+                    "本次看到 ${seenRelics.size} 件永禁文物",
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(top = 14.dp, bottom = 8.dp),
                 )

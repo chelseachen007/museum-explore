@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -90,6 +92,8 @@ fun MuseumVisitRecordSection(
     relicNames: Map<Int, String>,
     onEdit: () -> Unit,
     onPhotoClick: (VisitPhoto) -> Unit,
+    /** 删除这条记录。为空时不显示删除入口。 */
+    onDelete: (() -> Unit)? = null,
 ) {
     if (record.isEmpty) {
         Card(
@@ -132,7 +136,14 @@ fun MuseumVisitRecordSection(
                         )
                     }
                 }
-                TextButton(onClick = onEdit) { Text("编辑") }
+                if (record.note.isNotBlank() || record.photos.isNotEmpty()) {
+                    TextButton(onClick = onEdit) { Text("编辑") }
+                }
+                if (onDelete != null) {
+                    TextButton(onClick = onDelete) {
+                        Text("删除", color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
             if (record.note.isNotBlank()) {
                 Text(record.note, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 10.dp))
@@ -143,48 +154,58 @@ fun MuseumVisitRecordSection(
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(top = 14.dp, bottom = 7.dp),
                 )
-                record.photos.chunked(2).forEach { rowPhotos ->
-                    Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        rowPhotos.forEach { photo ->
-                            val relicName = photo.relicId?.let(relicNames::get) ?: "未关联国宝"
-                            Box(
-                                Modifier
-                                    .weight(1f)
-                                    .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0xFFF0EBE3))
-                                    .clickable { onPhotoClick(photo) },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(File(photo.path))
-                                        .crossfade(false)
-                                        .build(),
-                                    contentDescription = relicName,
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier.fillMaxSize().padding(3.dp),
-                                )
-                                Surface(
-                                    color = Color.Black.copy(alpha = .62f),
-                                    shape = RoundedCornerShape(50),
-                                    modifier = Modifier.align(Alignment.BottomStart).padding(6.dp),
-                                ) {
-                                    Text(
-                                        relicName,
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                                    )
-                                }
-                            }
-                        }
-                        if (rowPhotos.size == 1) Spacer(Modifier.weight(1f))
+                // 横向单行滚动：拍十几张也不用把详情页拉成一条长龙。
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(end = 4.dp),
+                ) {
+                    items(record.photos, key = { it.path }) { photo ->
+                        VisitPhotoThumb(
+                            photo = photo,
+                            relicName = photo.relicId?.let(relicNames::get) ?: "未关联国宝",
+                            onClick = { onPhotoClick(photo) },
+                        )
                     }
                 }
             }
+        }
+    }
+}
+
+/** 记录里的单张照片：固定尺寸，横向滚动时宽度一致。 */
+@Composable
+private fun VisitPhotoThumb(photo: VisitPhoto, relicName: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .width(112.dp)
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFF0EBE3))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(File(photo.path))
+                .crossfade(false)
+                .build(),
+            contentDescription = relicName,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Surface(
+            color = Color.Black.copy(alpha = .62f),
+            shape = RoundedCornerShape(50),
+            modifier = Modifier.align(Alignment.BottomStart).padding(6.dp),
+        ) {
+            Text(
+                relicName,
+                color = Color.White,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            )
         }
     }
 }

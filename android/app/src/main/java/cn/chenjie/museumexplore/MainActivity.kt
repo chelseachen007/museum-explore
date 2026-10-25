@@ -707,6 +707,7 @@ private fun MuseumDetailScreen(
     var showBranchPicker by rememberSaveable(museum) { mutableStateOf(false) }
     var showVisitDateDialog by rememberSaveable(museum) { mutableStateOf(false) }
     var confirmRemoveVisit by remember(museum) { mutableStateOf(false) }
+    var pendingOpenSheetAfterVisit by remember(museum) { mutableStateOf(false) }
     var viewerImage by remember { mutableStateOf<GalleryImage?>(null) }
     val heroImage = hero?.let {
         GalleryImage(it.localImage?.let { local -> "file:///android_asset/$local" } ?: it.image ?: return@let null, "官方资料图", it.name)
@@ -748,9 +749,17 @@ private fun MuseumDetailScreen(
                 visitCount = visits.size,
                 wished = wished,
                 latestLabel = visits.firstOrNull()?.let(::visitDateLabel),
-                onMarkVisit = { showVisitDateDialog = true },
+                onMarkVisit = {
+                    if (visited) {
+                        // 再记一次：先补一条到访，再直接进编辑面板写这一次的感想和照片。
+                        // 之前的实现只补到访、不开面板，用户以为记录没写进去。
+                        showVisitDateDialog = true
+                        if (!hasBranches) pendingOpenSheetAfterVisit = true
+                    } else {
+                        showVisitDateDialog = true
+                    }
+                },
                 onToggleWish = { viewModel.setMuseumWished(museum, !wished) },
-                onCancelLatestVisit = if (visits.isNotEmpty()) ({ confirmRemoveVisit = true }) else null,
             )
         }
         item { SectionLabel("我的记录") }
@@ -779,6 +788,11 @@ private fun MuseumDetailScreen(
                         subtitle = relicName?.let { "关联：$it" } ?: "未关联国宝",
                     )
                 },
+                onDelete = if (record.note.isNotBlank() || record.photos.isNotEmpty()) {
+                    { confirmRemoveVisit = true }
+                } else {
+                    null
+                },
             )
         }
         item { SectionLabel("馆藏国宝") }
@@ -806,6 +820,7 @@ private fun MuseumDetailScreen(
         // 选到具体馆区时，只回填那一片的记录；否则用整馆视角。
         val sheetRecord = remember(revision, museum, branch) {
             if (branch.isNullOrBlank()) {
+                // 多条到访时，回填有感想/照片的那条，不是简单取最新的一条空壳。
                 record
             } else {
                 val state = repository.exploration()
@@ -835,6 +850,11 @@ private fun MuseumDetailScreen(
             onConfirm = { startedAt ->
                 viewModel.addVisit(museum, startedAt)
                 showVisitDateDialog = false
+                if (pendingOpenSheetAfterVisit) {
+                    pendingOpenSheetAfterVisit = false
+                    recordTarget = null
+                    showRecordSheet = true
+                }
             },
             onDismiss = { showVisitDateDialog = false },
         )
@@ -842,13 +862,17 @@ private fun MuseumDetailScreen(
     if (confirmRemoveVisit) {
         AlertDialog(
             onDismissRequest = { confirmRemoveVisit = false },
-            title = { Text("取消最近一次到访？") },
-            text = { Text("只删除最近这一次参观记录和它的照片、感想。已看到的国宝会保留。") },
+            title = { Text("删除这条记录？") },
+            text = { Text("会删掉这里的感想和照片，已看到的国宝和到访次数都保留。") },
             confirmButton = {
                 TextButton(onClick = {
-                    visits.firstOrNull()?.let { viewModel.removeVisit(it.id) }
+                    // 只清记录，不动到访：两者是两件事，删记录不该让「已到访 N 次」变小。
+                    record.photos.forEach { runCatching { repository.deletePhoto(it.path) } }
+                    viewModel.saveBranchRecord(museum, null, "", emptyList())
                     confirmRemoveVisit = false
-                }) { Text("取消这次到访") }
+                }) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
             },
             dismissButton = { TextButton(onClick = { confirmRemoveVisit = false }) { Text("保留") } },
         )
@@ -904,7 +928,6 @@ private fun MuseumVisitStatusCard(
     latestLabel: String?,
     onMarkVisit: () -> Unit,
     onToggleWish: () -> Unit,
-    onCancelLatestVisit: (() -> Unit)?,
 ) {
     Card(
         Modifier.fillMaxWidth().padding(18.dp, 14.dp, 18.dp, 4.dp),
@@ -933,15 +956,12 @@ private fun MuseumVisitStatusCard(
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(contentColor = Color.White),
             ) { Text(if (visited) "再记一次参观" else "标记已到访", color = Color.White) }
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = onToggleWish, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) {
-                    Text(if (wished) "取消想去" else "加入想去")
-                }
-                if (onCancelLatestVisit != null) {
-                    OutlinedButton(onClick = onCancelLatestVisit, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) {
-                        Text("取消最近到访", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
+            OutlinedButton(
+                onClick = onToggleWish,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Text(if (wished) "取消想去" else "加入想去")
             }
         }
     }
@@ -1314,7 +1334,7 @@ private fun mapCenter(city: String): LatLng = mapOf(
 private fun CityMapCard(city: CitySummary, onClick: () -> Unit) {
     Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) { Text(city.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text("${city.relicCount} 件 195 永禁文物", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium) }
+            Row(verticalAlignment = Alignment.CenterVertically) { Text(city.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text("${city.relicCount} 件永禁文物", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium) }
             Text("${city.visitedCount} / ${city.museumCount} 家博物馆已去", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
             Box(Modifier.fillMaxWidth().height(5.dp).padding(top = 0.dp).clip(RoundedCornerShape(5.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) { Box(Modifier.fillMaxWidth(if (city.museumCount == 0) 0f else city.visitedCount.toFloat() / city.museumCount).height(5.dp).background(MaterialTheme.colorScheme.secondary)) }
         }

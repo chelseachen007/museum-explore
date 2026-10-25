@@ -403,7 +403,7 @@ private fun OpeningStatusLine(candidate: NextStopCandidate, openingDetail: Strin
 
 private fun relicSummary(candidate: NextStopCandidate): String = buildString {
     append(candidate.relicsTotal)
-    append(" 件 195 永禁文物")
+    append(" 件永禁文物")
     if (candidate.relicsWished > 0) {
         append("，其中 ")
         append(candidate.relicsWished)

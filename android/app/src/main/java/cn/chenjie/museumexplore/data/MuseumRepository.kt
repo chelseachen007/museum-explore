@@ -226,6 +226,26 @@ class MuseumRepository(private val context: Context) {
     // 照片与感想（与 visit 共用同一份照片目录）
     // ---------------------------------------------------------------------
 
+    /**
+     * 整馆视角下写记录的目标 visit。
+     *
+     * 「再记一次参观」这类操作只加了一个空壳到访，感想和照片必须落到
+     * 已经有内容的那条上——否则新写的会追加到空壳里，页面上却读旧的，
+     * 看起来就是「记了但没记上」。
+     */
+    fun journalTargetVisitId(museum: String, branch: String? = null): String? {
+        val targetId = if (branch.isNullOrBlank()) museum else "$museum · $branch"
+        val state = exploration()
+        val journal = state.confirmedVisitsForMuseum(targetId)
+            .sortedWith(VISIT_ORDER)
+            .firstOrNull { it.hasJournal }
+        if (journal != null) return journal.id
+        return state.confirmedVisitsForMuseum(targetId)
+            .sortedWith(VISIT_ORDER)
+            .firstOrNull()
+            ?.id
+    }
+
     fun museumRecord(museum: String): MuseumRecord {
         val state = exploration()
         // 整馆视角：父馆和它所有馆区里最近一条有内容的记录，都会出现在这一页。
@@ -252,7 +272,11 @@ class MuseumRepository(private val context: Context) {
         targetId: String = if (branch.isNullOrBlank()) museum else "$museum · $branch",
     ) {
         val state = exploration()
-        val existing = state.confirmedVisitsForMuseum(targetId).sortedWith(VISIT_ORDER).firstOrNull()
+        // 优先写回已有内容的那条，避免第二次记参观把内容追加到空壳上、页面却还是旧的。
+        val existing = state.confirmedVisitsForMuseum(targetId)
+            .sortedWith(VISIT_ORDER)
+            .firstOrNull { it.hasJournal }
+            ?: state.confirmedVisitsForMuseum(targetId).sortedWith(VISIT_ORDER).firstOrNull()
             ?: state.visitsForMuseum(targetId).firstOrNull { it.pendingConfirmation }
         if (existing != null) {
             updateVisitJournal(existing.id, note, photos)
@@ -278,7 +302,11 @@ class MuseumRepository(private val context: Context) {
 
     fun saveMuseumRecord(museum: String, note: String, photos: List<VisitPhoto>) {
         val state = exploration()
-        val visit = state.confirmedVisitsForMuseum(museum).sortedWith(VISIT_ORDER).firstOrNull()
+        // 同样优先写回已有内容的那条。
+        val visit = state.confirmedVisitsForMuseum(museum)
+            .sortedWith(VISIT_ORDER)
+            .firstOrNull { it.hasJournal }
+            ?: state.confirmedVisitsForMuseum(museum).sortedWith(VISIT_ORDER).firstOrNull()
         if (visit != null && (visit.hasJournal || note.isNotBlank() || photos.isNotEmpty())) {
             updateVisitJournal(visit.id, note, photos)
         } else {
