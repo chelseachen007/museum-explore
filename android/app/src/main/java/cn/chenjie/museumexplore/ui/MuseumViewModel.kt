@@ -48,6 +48,38 @@ class MuseumViewModel(application: Application) : AndroidViewModel(application) 
         repository.saveMuseumRecord(museum, note, photos)
         refresh()
     }
+
+    fun saveBranchRecord(museum: String, branch: String?, note: String, photos: List<VisitPhoto>) {
+        repository.saveBranchRecord(museum, branch, note, photos)
+        refresh()
+    }
     fun saveMapKey(value: String) { repository.saveMapKey(value); refresh() }
+
+    // 博物馆目录：自建馆、改名、合并馆区
+    fun addUserMuseum(name: String, city: String, officialUrl: String?, address: String?, notes: String?): Boolean {
+        val ok = repository.addUserMuseum(name, city, officialUrl, address, notes)
+        refresh()
+        return ok
+    }
+
+    fun updateUserMuseum(name: String, city: String, officialUrl: String?, address: String?, notes: String?): Boolean {
+        val ok = repository.updateUserMuseum(name, city, officialUrl, address, notes)
+        refresh()
+        return ok
+    }
+
+    fun removeUserMuseum(name: String) { repository.removeUserMuseum(name); refresh() }
+
+    fun renameUserMuseum(oldName: String, newName: String): Boolean {
+        val ok = repository.renameUserMuseum(oldName, newName)
+        refresh()
+        return ok
+    }
+
+    fun mergeMuseums(parent: String, city: String, members: List<Pair<String, String>>, trimSuffixes: List<String>): Boolean {
+        val ok = repository.mergeMuseums(parent, city, members, trimSuffixes)
+        refresh()
+        return ok
+    }
     fun saveLastPhoto(value: String) { repository.saveLastPhoto(value); refresh() }
 }
