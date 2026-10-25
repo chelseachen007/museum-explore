@@ -187,6 +187,13 @@ fun MuseumVisitRecordSection(
     }
 }
 
+/**
+ * 参观记录编辑面板。
+ *
+ * 交互约定：拍照或选完相册照片后立即落盘，不需要用户再点一次保存——
+ * 现场拍十几张照片还要滑到底部点按钮，是这个界面最容易让人放弃的地方。
+ * 顶部保留「存一份」给只写文字的人，底部最后一行也留一个保存，防止长列表里找不到入口。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VisitRecordSheet(
@@ -195,6 +202,7 @@ fun VisitRecordSheet(
     initialRecord: MuseumRecord,
     presetRelicId: Int?,
     repository: MuseumRepository,
+    museumId: String = museum,
     onSave: (String, List<VisitPhoto>) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -209,12 +217,30 @@ fun VisitRecordSheet(
     var cameraPath by remember { mutableStateOf<String?>(null) }
     val relicNames = remember(relics) { relics.associate { it.id to it.name } }
 
+    fun commit(silent: Boolean) {
+        val savedPhotos = photos.map { VisitPhoto(it.path, it.relicId) }
+        onSave(note, savedPhotos)
+        if (!silent) {
+            Toast.makeText(
+                context,
+                if (note.isBlank() && savedPhotos.isEmpty()) "记录已清空" else "参观记录已保存",
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
+
+    /** 照片一进列表就保存，用户关掉面板也不会丢。 */
+    fun autoSave(newPhotos: List<DraftPhoto>) {
+        photos = photos + newPhotos
+        runCatching { commit(silent = false) }
+    }
+
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isEmpty()) return@rememberLauncherForActivityResult
         scope.launch {
             importing = true
             val imported = withContext(Dispatchers.IO) { uris.mapNotNull { repository.importPhoto(it) } }
-            photos = photos + imported.map { DraftPhoto(it, presetRelicId) }
+            autoSave(imported.map { DraftPhoto(it, presetRelicId) })
             importing = false
             if (imported.size < uris.size) {
                 Toast.makeText(context, "有 ${uris.size - imported.size} 张图片导入失败", Toast.LENGTH_SHORT).show()
@@ -225,7 +251,7 @@ fun VisitRecordSheet(
         val path = cameraPath
         cameraPath = null
         if (success && path != null && repository.photoFile(path).length() > 0L) {
-            photos = photos + DraftPhoto(path, presetRelicId)
+            autoSave(listOf(DraftPhoto(path, presetRelicId)))
         } else if (path != null) {
             repository.deletePhoto(path)
         }
@@ -248,7 +274,11 @@ fun VisitRecordSheet(
     }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        // 关掉面板前兜底保存一次：用户很容易拍完直接下滑关掉，不能指望他记得点保存。
+        onDismissRequest = {
+            runCatching { commit(silent = true) }
+            onDismiss()
+        },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         LazyColumn(
@@ -256,13 +286,29 @@ fun VisitRecordSheet(
             contentPadding = PaddingValues(start = 22.dp, top = 4.dp, end = 22.dp, bottom = 28.dp),
         ) {
             item {
-                Text("记录这次参观", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(
-                    museum,
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 5.dp, bottom = 12.dp),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("记录这次参观", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            museumId,
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 5.dp),
+                        )
+                    }
+                    // 保存按钮提到顶部：照片再多也不用往下滑才能保存。
+                    Button(
+                        onClick = {
+                            commit(silent = false)
+                            onDismiss()
+                        },
+                        enabled = !importing,
+                        modifier = Modifier.padding(start = 10.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                    ) { Text("保存", color = Color.White) }
+                }
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
@@ -339,7 +385,11 @@ fun VisitRecordSheet(
                                 }
                             }
                             IconButton(onClick = {
+                                // 自动保存已经落盘，删照片要同步删掉，否则关掉面板它又会回来。
+                                val removed = photos.getOrNull(index)
                                 photos = photos.filterIndexed { photoIndex, _ -> photoIndex != index }
+                                removed?.let { repository.deletePhoto(it.path) }
+                                runCatching { commit(silent = true) }
                             }) {
                                 Icon(Icons.Outlined.Close, contentDescription = "移除照片")
                             }
@@ -350,13 +400,7 @@ fun VisitRecordSheet(
             item {
                 Button(
                     onClick = {
-                        val savedPhotos = photos.map { VisitPhoto(it.path, it.relicId) }
-                        onSave(note, savedPhotos)
-                        Toast.makeText(
-                            context,
-                            if (note.isBlank() && savedPhotos.isEmpty()) "记录已清空" else "参观记录已保存",
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        commit(silent = false)
                         onDismiss()
                     },
                     enabled = !importing,
@@ -364,6 +408,12 @@ fun VisitRecordSheet(
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(contentColor = Color.White),
                 ) { Text("保存记录", color = Color.White) }
+                Text(
+                    "拍照或加完照片会自动保存，直接关掉也不会丢。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
         }
     }
@@ -378,6 +428,7 @@ fun VisitRecordSheet(
                     list[index] = list[index].copy(relicId = relicId)
                 }
                 associatingIndex = null
+                runCatching { commit(silent = true) }
             },
             onDismiss = { associatingIndex = null },
         )
