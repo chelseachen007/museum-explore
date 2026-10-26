@@ -8,6 +8,10 @@ import androidx.core.content.FileProvider
 import cn.chenjie.museumexplore.model.CitySummary
 import cn.chenjie.museumexplore.model.DatePrecision
 import cn.chenjie.museumexplore.model.ExplorationState
+import cn.chenjie.museumexplore.model.GuideGlossaryGroup
+import cn.chenjie.museumexplore.model.GuideGlossaryItem
+import cn.chenjie.museumexplore.model.GuideSection
+import cn.chenjie.museumexplore.model.MuseumGuide
 import cn.chenjie.museumexplore.model.MuseumBranch
 import cn.chenjie.museumexplore.model.MuseumCandidate
 import cn.chenjie.museumexplore.model.MuseumEntry
@@ -43,6 +47,13 @@ class MuseumRepository(private val context: Context) {
     private val officialEntryMap: Map<String, OfficialEntry> by lazy { readOfficialEntries() }
     private val baseMuseumInfo: Map<String, MuseumInfo> by lazy { readMuseums() }
     private val builtInBranches: List<MuseumBranch> by lazy { readBranches() }
+    /**
+     * 「博物馆怎么逛」指南。
+     *
+     * 和 [relics] 一样是懒加载的静态资产，但它**不参与**探索状态的编码/备份：
+     * 内容更新走 App 版本，不走用户数据迁移，混进备份反而会让老备份覆盖掉新指南。
+     */
+    private val guide: MuseumGuide by lazy { readGuide() }
     private val photosDir: File
         get() = File(context.filesDir, PHOTO_DIR).apply { mkdirs() }
     private var cachedState: ExplorationState? = null
@@ -67,6 +78,8 @@ class MuseumRepository(private val context: Context) {
     }
 
     fun relics(): List<Relic> = relics
+    fun guide(): MuseumGuide = guide
+    fun guideSection(id: String): GuideSection? = guide.sections.firstOrNull { it.id == id }
     fun museums(): Map<String, MuseumInfo> = directory().info
     fun officialEntry(museum: String): OfficialEntry? = officialEntryMap[museum]
     fun note(id: Int): String = preferences.getString("note:$id", "").orEmpty()
@@ -1307,6 +1320,7 @@ class MuseumRepository(private val context: Context) {
                         localImage = localImages[id],
                         museumUrl = item.optionalString("museumUrl"),
                         museumWechat = cleanDisplay(item.optString("museumWechat")).takeIf { it.isNotBlank() },
+                        detail = item.optString("detail").trim(),
                     ),
                 )
             }
@@ -1314,8 +1328,80 @@ class MuseumRepository(private val context: Context) {
     }.getOrDefault(emptyList())
 
 
-    private fun readOfficialEntries(): Map<String, OfficialEntry> = runCatching {
-        val json = JSONObject(readAsset("official_entries.json"))
+    /**
+     * 读「博物馆怎么逛」。
+     *
+     * 解析失败一律返回 [MuseumGuide.empty]，界面据此隐藏入口——指南是锦上添花，
+     * 不能因为一个资产文件坏了就让整个 App 打不开。
+     *
+     * 空 [id] 的节会被丢掉：id 是深链和阅读进度的锚点，没 id 就没法定位。
+     */
+    private fun readGuide(): MuseumGuide = runCatching {
+        val json = JSONObject(readAsset(GUIDE_ASSET))
+        val sectionItems = json.optJSONArray("sections") ?: JSONArray()
+        val sections = buildList {
+            for (index in 0 until sectionItems.length()) {
+                val item = sectionItems.getJSONObject(index)
+                val id = item.optString("id").trim()
+                val title = cleanDisplay(item.optString("title"))
+                // body 走 cleanMarkdown 而不是 cleanDisplay：TextCleaner 是为维基抄来的脏文本设计的，
+                // 它会把 `**粗体**` 前后空白吃掉，正文的 markdown 结构会被它悄悄改写。
+                val body = cleanMarkdown(item.optString("body"))
+                if (id.isBlank() || title.isBlank() || body.isBlank()) continue
+                add(
+                    GuideSection(
+                        id = id,
+                        title = title,
+                        summary = cleanDisplay(item.optString("summary")),
+                        body = body,
+                    ),
+                )
+            }
+        }
+        val groups = buildList {
+            val groupItems = json.optJSONArray("glossary") ?: JSONArray()
+            for (index in 0 until groupItems.length()) {
+                val group = groupItems.getJSONObject(index)
+                val name = cleanDisplay(group.optString("group"))
+                if (name.isBlank()) continue
+                val items = buildList {
+                    val entries = group.optJSONArray("items") ?: JSONArray()
+                    for (entryIndex in 0 until entries.length()) {
+                        val entry = entries.getJSONObject(entryIndex)
+                        val char = cleanDisplay(entry.optString("char"))
+                        if (char.isBlank()) continue
+                        add(
+                            GuideGlossaryItem(
+                                char = char,
+                                pinyin = cleanDisplay(entry.optString("pinyin")),
+                                // 地名类条目允许没有释义，这里不要用占位符补，否则界面上全是重复的「—」。
+                                meaning = cleanDisplay(entry.optString("meaning")),
+                            ),
+                        )
+                    }
+                }
+                if (items.isNotEmpty()) add(GuideGlossaryGroup(group = name, items = items))
+            }
+        }
+        val sources = buildList {
+            val sourceItems = json.optJSONArray("sources") ?: JSONArray()
+            for (index in 0 until sourceItems.length()) {
+                val text = cleanDisplay(sourceItems.optString(index))
+                if (text.isNotBlank()) add(text)
+            }
+        }
+        MuseumGuide(
+            title = cleanDisplay(json.optString("title")).ifBlank { "博物馆怎么逛" },
+            subtitle = cleanDisplay(json.optString("subtitle")),
+            intro = cleanDisplay(json.optString("intro")),
+            updatedAt = json.optString("updatedAt").trim(),
+            sections = sections,
+            glossary = groups,
+            sources = sources,
+        )
+    }.getOrDefault(MuseumGuide.empty)
+
+    private fun readOfficialEntries(): Map<String, OfficialEntry> = runCatching {        val json = JSONObject(readAsset("official_entries.json"))
         val items = json.getJSONArray("museums")
         buildMap {
             for (index in 0 until items.length()) {
@@ -1340,6 +1426,22 @@ class MuseumRepository(private val context: Context) {
     }.getOrDefault(emptyMap())
 
     private fun readAsset(name: String): String = context.assets.open(name).use { it.readBytes().toString(Charsets.UTF_8) }
+    /**
+     * 清洗 markdown 正文：只做「行级」规整，不动行内标记。
+     *
+     * 与 [cleanDisplay] 的区别是不逐行 trim 之前的空行压缩——正文有空行分段，
+     * 连续多个空行压成一个就够了，但不能把空行整个吃掉，否则所有段落会粘成一坨。
+     */
+    private fun cleanMarkdown(raw: String?): String {
+        if (raw.isNullOrBlank()) return ""
+        return raw.replace("\r\n", "\n")
+            .replace('\r', '\n')
+            .lines()
+            .joinToString("\n") { it.trimEnd() }
+            .replace(Regex("\n{3,}"), "\n\n")
+            .trim()
+    }
+
     private fun cleanDisplay(raw: String?): String {
         if (raw == null || raw.equals("null", ignoreCase = true)) return ""
         return TextCleaner.clean(raw)
@@ -1401,6 +1503,7 @@ class MuseumRepository(private val context: Context) {
         const val USER_RELICS_KEY = "user_relics_v1"
         const val MERGE_OVERRIDES_KEY = "museum_merge_overrides_v1"
         const val BRANCHES_ASSET = "museum_branches.json"
+        const val GUIDE_ASSET = "museum_guide.json"
 
         /** 依次读取，同名馆以先读到的为准。 */
         val ASSET_FILES = listOf("museums.json", "museums_cn.json", "museums_overseas.json")

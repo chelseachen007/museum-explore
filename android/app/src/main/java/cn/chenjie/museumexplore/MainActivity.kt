@@ -57,6 +57,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Museum
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -149,7 +150,11 @@ import cn.chenjie.museumexplore.model.MuseumRecord
 import cn.chenjie.museumexplore.ui.GalleryImage
 import cn.chenjie.museumexplore.ui.ImageViewerDialog
 import cn.chenjie.museumexplore.ui.MapNavigator
+import cn.chenjie.museumexplore.ui.RelicMarkdown
+import cn.chenjie.museumexplore.ui.MarkdownBody
 import cn.chenjie.museumexplore.ui.MuseumDirectoryScreen
+import cn.chenjie.museumexplore.ui.MuseumGuideScreen
+import cn.chenjie.museumexplore.ui.GuideSectionScreen
 import cn.chenjie.museumexplore.ui.MuseumTheme
 import cn.chenjie.museumexplore.ui.MuseumViewModel
 import cn.chenjie.museumexplore.ui.MuseumVisitRecordSection
@@ -284,6 +289,7 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                         repository = repository,
                         onTimeline = { navController.navigate("timeline") },
                         onMuseums = { navController.navigate("museums") },
+                        onGuide = { navController.navigate("guide") },
                         onExport = { exportLauncher.launch("museum-explore-backup.zip") },
                         onImport = { importLauncher.launch(arrayOf("application/zip")) },
                         onAbout = { aboutDialog = true },
@@ -348,6 +354,35 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                     val city = Uri.decode(entry.arguments?.getString("city").orEmpty())
                     val museum = Uri.decode(entry.arguments?.getString("museum").orEmpty())
                     MuseumDetailScreen(repository, viewModel, city, museum, revision, navController)
+                }
+                composable("guide") {
+                    val guide = repository.guide()
+                    if (guide.isEmpty) {
+                        // 资产缺失时不该给用户一个空白页，直接退回去。
+                        androidx.compose.runtime.LaunchedEffect(Unit) { navController.popBackStack() }
+                    } else {
+                        MuseumGuideScreen(
+                            guide = guide,
+                            onBack = { navController.popBackStack() },
+                            onOpenSection = { id -> navController.navigate("guide/$id") },
+                        )
+                    }
+                }
+                composable("guide/{sectionId}") { entry ->
+                    val guide = repository.guide()
+                    val sectionId = entry.arguments?.getString("sectionId").orEmpty()
+                    val section = guide.sections.firstOrNull { it.id == sectionId }
+                    if (section == null) {
+                        androidx.compose.runtime.LaunchedEffect(Unit) { navController.popBackStack() }
+                    } else {
+                        GuideSectionScreen(
+                            guide = guide,
+                            section = section,
+                            onBack = { navController.popBackStack() },
+                            // 切下一节用 navigate，不 popBackStack：返回键才能一级级退回目录。
+                            onOpenSection = { nextId -> navController.navigate("guide/$nextId") },
+                        )
+                    }
                 }
                 composable("museums") {
                     MuseumDirectoryScreen(
@@ -414,6 +449,7 @@ private fun MoreTab(
     repository: MuseumRepository,
     onTimeline: () -> Unit,
     onMuseums: () -> Unit,
+    onGuide: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
     onAbout: () -> Unit,
@@ -423,6 +459,7 @@ private fun MoreTab(
         repository = repository,
         onTimeline = onTimeline,
         onMuseums = onMuseums,
+        onGuide = onGuide,
         onExport = onExport,
         onImport = onImport,
         onAbout = onAbout,
@@ -715,7 +752,7 @@ private fun RelicDetailScreen(
     }
     var viewerImage by remember { mutableStateOf<GalleryImage?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).background(MaterialTheme.colorScheme.background)) {
-        PageHeader("‹ 返回永禁文物总览", relic.name, "${relic.era} · ${relic.category}", onBack)
+        PageHeader("永禁文物 · ${relic.category}", relic.name, relic.era, onBack)
         if (galleryImages.isNotEmpty()) {
             RelicImageCarousel(galleryImages, Modifier.padding(horizontal = 22.dp)) { viewerImage = it }
         } else {
@@ -740,8 +777,18 @@ private fun RelicDetailScreen(
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(contentColor = Color.White),
         ) { Text("查看博物馆", color = Color.White) }
-        SectionLabel("完整故事")
-        Text(relic.story, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 22.dp))
+        if (relic.hasDetail) {
+            // 深度正文自己带小标题（前世今生 / 为什么重要 / 不可替代 / 为什么不能出国），
+            // 这里不能再套一层 SectionLabel，否则会出现「为什么不能出境」下面又跟一个小标题的重复感。
+            MarkdownBody(
+                blocks = remember(relic.id) { RelicMarkdown.parse(relic.detail) },
+                modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
+            )
+        } else {
+            // 没写深度正文的文物保持原样，旧 data 里的单段 story 就是它目前的全部内容。
+            SectionLabel("完整故事")
+            Text(relic.story, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 22.dp))
+        }
         Button(
             onClick = { viewModel.setCollected(relic.id, !collected) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 10.dp),
@@ -835,7 +882,7 @@ private fun UserRelicDetailScreen(
         }
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).background(MaterialTheme.colorScheme.background)) {
-        PageHeader("‹ 返回国宝总览", latest.name, "${latest.era ?: "年代不详"} · ${latest.category ?: "类别未填"}", onBack)
+        PageHeader("我记的国宝 · ${latest.category ?: "类别未填"}", latest.name, latest.era ?: "年代不详", onBack)
         if (galleryImages.isNotEmpty()) {
             RelicImageCarousel(galleryImages, Modifier.padding(horizontal = 22.dp)) { viewerImage = it }
         } else {
@@ -2027,6 +2074,7 @@ private fun MoreScreen(
     repository: MuseumRepository,
     onTimeline: () -> Unit,
     onMuseums: () -> Unit,
+    onGuide: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
     onAbout: () -> Unit,
@@ -2037,6 +2085,9 @@ private fun MoreScreen(
         SectionLabel("我的足迹")
         SettingsRow("我的参观", "时间线、年度足迹和待整理记录", Icons.Outlined.CalendarMonth, onTimeline)
         SettingsRow("博物馆清单", "国内 + 国外全量名录，也可以自己添加", Icons.Outlined.Museum, onMuseums)
+        // 指南是通用知识，和本机数据无关，所以放在「我的足迹」和「地图与数据」之间当作独立一段。
+        SectionLabel("看展指南")
+        SettingsRow("博物馆怎么逛", "进场前做什么、各类文物各看哪几处", Icons.Outlined.MenuBook, onGuide)
         SectionLabel("地图与数据")
         // 地图服务设置暂时隐藏：高德 SDK 已注释，留着入口只会让用户以为地图坏了。
         SettingsRow("导出备份", "保存状态、时间线、照片和感想", Icons.Outlined.UploadFile, onExport)

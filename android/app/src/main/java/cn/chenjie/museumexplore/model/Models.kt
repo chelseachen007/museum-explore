@@ -13,7 +13,16 @@ data class Relic(
     val localImage: String?,
     val museumUrl: String?,
     val museumWechat: String?,
-)
+    /**
+     * 详情页正文（轻量 markdown），讲「前世今生 / 为什么重要 / 为什么不可替代 / 为什么不能出国」。
+     *
+     * 空串表示这件文物还没人写深度正文，详情页退回显示旧的 [story] 单段。
+     * 不能把 null 写成「暂无」占位——那样用户分不清是「这文物没故事」还是「作者还没写」。
+     */
+    val detail: String = "",
+) {
+    val hasDetail: Boolean get() = detail.isNotBlank()
+}
 
 /**
  * 用户在博物馆现场自己拍到的「其他国宝」。
