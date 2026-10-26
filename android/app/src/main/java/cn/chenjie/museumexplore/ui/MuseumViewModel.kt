@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import cn.chenjie.museumexplore.data.MuseumRepository
 import cn.chenjie.museumexplore.model.MuseumRecord
+import cn.chenjie.museumexplore.model.UserRelic
 import cn.chenjie.museumexplore.model.Visit
 import cn.chenjie.museumexplore.model.VisitPhoto
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,4 +93,40 @@ class MuseumViewModel(application: Application) : AndroidViewModel(application) 
         return ok
     }
     fun saveLastPhoto(value: String) { repository.saveLastPhoto(value); refresh() }
+
+    // 用户自建国宝：195 名单之外现场拍到的国宝
+    fun addUserRelic(
+        name: String,
+        museum: String,
+        city: String,
+        era: String? = null,
+        category: String? = null,
+        reason: String? = null,
+        story: String? = null,
+        photo: String? = null,
+        museumUrl: String? = null,
+    ): UserRelic? {
+        val relic = repository.addUserRelic(name, museum, city, era, category, reason, story, photo, museumUrl)
+        refresh()
+        return relic
+    }
+
+    fun updateUserRelic(
+        id: Int,
+        name: String,
+        museum: String,
+        city: String,
+        era: String? = null,
+        category: String? = null,
+        reason: String? = null,
+        story: String? = null,
+        photo: String? = null,
+        museumUrl: String? = null,
+    ): Boolean {
+        val ok = repository.updateUserRelic(id, name, museum, city, era, category, reason, story, photo, museumUrl)
+        refresh()
+        return ok
+    }
+
+    fun removeUserRelic(id: Int) { repository.removeUserRelic(id); refresh() }
 }

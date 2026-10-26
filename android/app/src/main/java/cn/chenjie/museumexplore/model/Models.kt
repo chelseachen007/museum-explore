@@ -15,6 +15,29 @@ data class Relic(
     val museumWechat: String?,
 )
 
+/**
+ * 用户在博物馆现场自己拍到的「其他国宝」。
+ *
+ * 195 件永禁文物是固定名单，id 是 1..195；自建国宝走独立的 UserRelicsCodec 存储，
+ * id 用负数（-1 起递减），这样两类记录在同一个界面上不会撞号，
+ * 也不会因为名单扩编被顶掉。
+ */
+data class UserRelic(
+    val id: Int,
+    val name: String,
+    /** 所在博物馆。已经不在 195 名单里也没关系，用户可以填任意馆名。 */
+    val museum: String,
+    val city: String,
+    val era: String? = null,
+    val category: String? = null,
+    val reason: String? = null,
+    val story: String? = null,
+    /** 用户拍摄或相册导入的照片文件名（存在 visit_photos 目录下，与参观照片同址）。 */
+    val photo: String? = null,
+    val museumUrl: String? = null,
+    val createdAt: Long = 0L,
+)
+
 data class VisitPhoto(
     val path: String,
     val relicId: Int? = null,

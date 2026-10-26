@@ -19,6 +19,7 @@ import cn.chenjie.museumexplore.model.OfficialEntry
 import cn.chenjie.museumexplore.model.RecordSource
 import cn.chenjie.museumexplore.model.Relic
 import cn.chenjie.museumexplore.model.UserMuseum
+import cn.chenjie.museumexplore.model.UserRelic
 import cn.chenjie.museumexplore.model.Visit
 import cn.chenjie.museumexplore.model.VisitPhoto
 import cn.chenjie.museumexplore.model.VisitTarget
@@ -46,6 +47,7 @@ class MuseumRepository(private val context: Context) {
         get() = File(context.filesDir, PHOTO_DIR).apply { mkdirs() }
     private var cachedState: ExplorationState? = null
     private var cachedUserMuseums: List<UserMuseum>? = null
+    private var cachedUserRelics: List<UserRelic>? = null
     private var cachedDirectory: MuseumDirectory? = null
     private var cachedRelicCounts: Map<String, Int>? = null
 
@@ -604,6 +606,108 @@ class MuseumRepository(private val context: Context) {
 
     fun isUserMuseum(name: String): Boolean = userMuseums().any { it.name == name && !it.isMerged }
 
+    // ---------------------------------------------------------------------
+    // 用户自建国宝（195 名单之外，现场拍到就能记）
+    // ---------------------------------------------------------------------
+
+    fun userRelics(): List<UserRelic> {
+        cachedUserRelics?.let { return it }
+        val loaded = UserRelicsCodec.decode(preferences.getString(USER_RELICS_KEY, null))
+        cachedUserRelics = loaded
+        return loaded
+    }
+
+    /** 自建国宝按录入时间倒序，最后拍到的排在最前。 */
+    fun userRelicsNewestFirst(): List<UserRelic> = userRelics()
+        .sortedByDescending { it.createdAt }
+        // 库里只存文件名；换设备导入备份后目录变了，这里还原成当前设备的绝对路径。
+        .map { relic -> relic.photo?.let { relic.copy(photo = absolutePhotoPath(it)) } ?: relic }
+
+    fun userRelic(id: Int): UserRelic? = userRelicsNewestFirst().firstOrNull { it.id == id }
+
+    /**
+     * 新增一件自建国宝。
+     *
+     * id 取当前最小值的再减一，保证永不为正数——正数是 195 件名单的编号，
+     * 一旦撞号，「已看到」标记就会挂到错误的对象上。
+     * [photo] 传的是照片文件名（不是绝对路径），换设备导入备份后仍能还原。
+     */
+    fun addUserRelic(
+        name: String,
+        museum: String,
+        city: String,
+        era: String? = null,
+        category: String? = null,
+        reason: String? = null,
+        story: String? = null,
+        photo: String? = null,
+        museumUrl: String? = null,
+    ): UserRelic? {
+        val cleanName = name.trim()
+        if (cleanName.isBlank()) return null
+        val existing = userRelics()
+        val relic = UserRelic(
+            id = (existing.minOfOrNull { it.id } ?: 0) - 1,
+            name = cleanName,
+            museum = museum.trim(),
+            city = city.trim(),
+            era = era?.trim()?.takeIf { it.isNotEmpty() },
+            category = category?.trim()?.takeIf { it.isNotEmpty() },
+            reason = reason?.trim()?.takeIf { it.isNotEmpty() },
+            story = story?.trim()?.takeIf { it.isNotEmpty() },
+            photo = photo?.let { File(it).name }?.takeIf { it.isNotEmpty() },
+            museumUrl = museumUrl?.trim()?.takeIf { it.isNotEmpty() },
+            createdAt = System.currentTimeMillis(),
+        )
+        saveUserRelics(existing + relic)
+        return relic
+    }
+
+    fun updateUserRelic(
+        id: Int,
+        name: String,
+        museum: String,
+        city: String,
+        era: String? = null,
+        category: String? = null,
+        reason: String? = null,
+        story: String? = null,
+        photo: String? = null,
+        museumUrl: String? = null,
+    ): Boolean {
+        val current = userRelics()
+        val index = current.indexOfFirst { it.id == id }
+        if (index < 0) return false
+        val cleanName = name.trim()
+        if (cleanName.isBlank()) return false
+        val old = current[index]
+        val newPhoto = photo?.let { File(it).name }?.takeIf { it.isNotEmpty() }
+        // 换了照片就把旧文件删掉，否则备份里会一直带着用户已经放弃的那张。
+        if (old.photo != null && newPhoto != old.photo) deletePhoto(old.photo)
+        val updated = old.copy(
+            name = cleanName,
+            museum = museum.trim(),
+            city = city.trim(),
+            era = era?.trim()?.takeIf { it.isNotEmpty() },
+            category = category?.trim()?.takeIf { it.isNotEmpty() },
+            reason = reason?.trim()?.takeIf { it.isNotEmpty() },
+            story = story?.trim()?.takeIf { it.isNotEmpty() },
+            photo = newPhoto,
+            museumUrl = museumUrl?.trim()?.takeIf { it.isNotEmpty() },
+        )
+        saveUserRelics(current.toMutableList().also { it[index] = updated })
+        return true
+    }
+
+    fun removeUserRelic(id: Int) {
+        val target = userRelic(id) ?: return
+        saveUserRelics(userRelics().filterNot { it.id == id })
+        target.photo?.let(::deletePhoto)
+    }
+
+    /** 自建国宝所在馆的馆藏计数：详情页「N 件永禁文物」不把它算进去，单列一段。 */
+    fun userRelicCountForMuseum(museum: String): Int = userRelics().count { it.museum == museum }
+
     /** 新增一座博物馆。同名内置馆已存在时直接返回 false，交给界面提示用户。 */
     fun addUserMuseum(name: String, city: String, officialUrl: String? = null, address: String? = null, notes: String? = null): Boolean {
         val cleanName = name.trim()
@@ -802,7 +906,12 @@ class MuseumRepository(private val context: Context) {
             }
         }
         staged.forEach { (name, bytes) -> File(photosDir, name).writeBytes(bytes) }
+        // 自建馆和自建国宝也是内存缓存，不清掉的话导入完界面还是旧数据——
+        // 用户会以为备份没导进去，或者干脆看不到别人那台设备上的记录。
         cachedState = null
+        cachedUserMuseums = null
+        cachedUserRelics = null
+        invalidateDirectory()
         if (containsState && importedState != null) {
             saveExploration(toState(importedState!!))
         } else {
@@ -871,6 +980,11 @@ class MuseumRepository(private val context: Context) {
         cachedUserMuseums = list
         preferences.edit().putString(USER_MUSEUMS_KEY, UserMuseumsCodec.encode(list)).apply()
         invalidateDirectory()
+    }
+
+    private fun saveUserRelics(list: List<UserRelic>) {
+        cachedUserRelics = list
+        preferences.edit().putString(USER_RELICS_KEY, UserRelicsCodec.encode(list)).apply()
     }
 
     /**
@@ -1284,6 +1398,7 @@ class MuseumRepository(private val context: Context) {
         const val PHOTO_DIR = "visit_photos"
         val PHOTO_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "heic", "heif")
         const val USER_MUSEUMS_KEY = "user_museums_v1"
+        const val USER_RELICS_KEY = "user_relics_v1"
         const val MERGE_OVERRIDES_KEY = "museum_merge_overrides_v1"
         const val BRANCHES_ASSET = "museum_branches.json"
 

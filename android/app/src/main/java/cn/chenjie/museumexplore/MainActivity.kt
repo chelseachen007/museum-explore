@@ -27,9 +27,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -38,7 +40,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -136,6 +141,7 @@ import cn.chenjie.museumexplore.model.MuseumBranch
 import cn.chenjie.museumexplore.model.MuseumInfo
 import cn.chenjie.museumexplore.model.OfficialEntry
 import cn.chenjie.museumexplore.model.Relic
+import cn.chenjie.museumexplore.model.UserRelic
 import cn.chenjie.museumexplore.model.VISIT_ORDER
 import cn.chenjie.museumexplore.model.Visit
 import cn.chenjie.museumexplore.model.VisitTarget
@@ -268,8 +274,10 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                 when (selectedTab) {
                     0 -> CollectionTab(
                         repository = repository,
+                        viewModel = viewModel,
                         revision = revision,
                         onRelicClick = { navController.navigate("relic/${it.id}") },
+                        onUserRelicClick = { navController.navigate("myrelic/${it.id}") },
                     )
                     1 -> MapTab(repository, viewModel, revision, navController)
                     else -> MoreTab(
@@ -310,6 +318,22 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
                             onOpenMuseumRecord = { city, museum ->
                                 navController.navigate("museum/${Uri.encode(city)}/${Uri.encode(museum)}")
                             },
+                            onOpenMuseum = { city, museum ->
+                                navController.navigate("museum/${Uri.encode(city)}/${Uri.encode(museum)}")
+                            },
+                        )
+                    }
+                }
+                composable("myrelic/{id}") { entry ->
+                    val id = entry.arguments?.getString("id")?.toIntOrNull()
+                    val relic = id?.let { repository.userRelic(it) }
+                    if (relic != null) {
+                        UserRelicDetailScreen(
+                            repository = repository,
+                            viewModel = viewModel,
+                            relic = relic,
+                            revision = revision,
+                            onBack = { navController.popBackStack() },
                             onOpenMuseum = { city, museum ->
                                 navController.navigate("museum/${Uri.encode(city)}/${Uri.encode(museum)}")
                             },
@@ -361,13 +385,17 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
 @Composable
 private fun CollectionTab(
     repository: MuseumRepository,
+    viewModel: MuseumViewModel,
     revision: Int,
     onRelicClick: (Relic) -> Unit,
+    onUserRelicClick: (UserRelic) -> Unit,
 ) {
     CollectionScreen(
         repository = repository,
+        viewModel = viewModel,
         revision = revision,
         onRelicClick = onRelicClick,
+        onUserRelicClick = onUserRelicClick,
     )
 }
 
@@ -415,18 +443,25 @@ private fun LoadingScreen() {
 @Composable
 private fun CollectionScreen(
     repository: MuseumRepository,
+    viewModel: MuseumViewModel,
     revision: Int,
     onRelicClick: (Relic) -> Unit,
+    onUserRelicClick: (UserRelic) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf(CollectionFilter.All) }
     var filterMenu by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<UserRelic?>(null) }
+    var adding by remember { mutableStateOf(false) }
     // 只算一遍状态快照，避免每张卡片各自回读一次全量 exploration 导致滚动掉帧。
     val state = remember(revision) { repository.exploration() }
     // 195 张卡片的「已看到 / 想看」预先算成 Set，卡片只做 O(1) 查表。
     val seenIds = remember(state) { state.sightings.mapTo(HashSet()) { it.relicId } }
     val wishedIds = remember(state) { state.wishedRelics.mapNotNullTo(HashSet()) { it.target.toIntOrNull() } }
     val allRelics = remember(repository) { repository.relics() }
+    val userRelics = remember(revision) { repository.userRelicsNewestFirst() }
+    // 两个分区都跟着搜索走，但只有 195 名单参与「已看到 / 未看到 / 想看」筛选。
+    // 自建国宝都是用户自己拍到才录的，没有「未看到」这种状态。
     val relics = remember(allRelics, seenIds, wishedIds, query, filter) {
         allRelics.filter { relic ->
             val matchesQuery = query.isBlank() || relic.name.contains(query) || relic.museum.contains(query)
@@ -439,10 +474,18 @@ private fun CollectionScreen(
             matchesQuery && matchesFilter
         }
     }
+    val matchedUserRelics = remember(userRelics, query) {
+        if (query.isBlank()) {
+            userRelics
+        } else {
+            userRelics.filter { it.name.contains(query) || it.museum.contains(query) || it.city.contains(query) }
+        }
+    }
+    val listState = rememberLazyGridState()
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        PageHeader("THE COLLECTION · 195", "永禁文物总览", "标记真正看到过的永禁文物，也把想看的留给下一次。")
+        PageHeader("THE COLLECTION · 195", "永禁文物总览", "标记真正看到过的永禁文物，也把想看的留给下一次；拍到别的国宝也能记进来。")
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(query, { query = it }, Modifier.weight(1f), placeholder = { Text("搜索永禁文物") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = RoundedCornerShape(16.dp))
+            OutlinedTextField(query, { query = it }, Modifier.weight(1f), placeholder = { Text("搜索国宝 / 博物馆") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = RoundedCornerShape(16.dp))
             Spacer(Modifier.width(8.dp))
             Box {
                 Button(
@@ -464,19 +507,116 @@ private fun CollectionScreen(
                 }
             }
         }
-        Text(
-            "${filter.label}    ${relics.size} 件 · ${seenIds.size} / ${allRelics.size} 已看到",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(20.dp, 18.dp, 20.dp, 8.dp),
-        )
-        LazyVerticalGrid(columns = GridCells.Fixed(2), contentPadding = PaddingValues(14.dp, 0.dp, 14.dp, 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
-            items(relics, key = { it.id }) { relic ->
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            state = listState,
+            contentPadding = PaddingValues(14.dp, 4.dp, 14.dp, 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            // ── 模块一：195 件永禁文物 ──────────────────────────────
+            item(span = { GridItemSpan(maxLineSpan) }, key = "section-195") {
+                CollectionSectionHeader(
+                    title = "195 件永禁文物",
+                    detail = "${filter.label} · ${relics.size} 件 · ${seenIds.size} / ${allRelics.size} 已看到",
+                    actionLabel = null,
+                    onAction = null,
+                )
+            }
+            if (relics.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "empty-195") {
+                    Text(
+                        "没有符合条件永禁文物，换个关键词或筛选试试。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 12.dp),
+                    )
+                }
+            }
+            items(relics, key = { "r${it.id}" }) { relic ->
                 RelicCard(
                     relic = relic,
                     collected = relic.id in seenIds,
                     wished = relic.id in wishedIds,
                     onClick = onRelicClick,
                 )
+            }
+
+            // ── 模块二：其他国宝（自己拍到的） ────────────────────
+            item(span = { GridItemSpan(maxLineSpan) }, key = "section-other") {
+                CollectionSectionHeader(
+                    title = "其他国宝",
+                    detail = if (matchedUserRelics.isEmpty()) {
+                        "拍到 195 名单外的国宝，拍照记下来，它会出现在这里。"
+                    } else {
+                        "${matchedUserRelics.size} 件 · 自己拍到的"
+                    },
+                    actionLabel = "新增",
+                    onAction = { adding = true },
+                )
+            }
+            if (matchedUserRelics.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "empty-other") {
+                    OutlinedButton(
+                        onClick = { adding = true },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("拍到了别的国宝？点这里记下来") }
+                }
+            }
+            items(matchedUserRelics, key = { "u${it.id}" }) { relic ->
+                UserRelicCard(relic = relic, onClick = { onUserRelicClick(relic) })
+            }
+        }
+    }
+
+    if (adding) {
+        UserRelicEditorSheet(
+            repository = repository,
+            viewModel = viewModel,
+            initial = null,
+            defaultMuseum = "",
+            defaultCity = "",
+            onDismiss = { adding = false },
+        )
+    }
+    editing?.let { target ->
+        UserRelicEditorSheet(
+            repository = repository,
+            viewModel = viewModel,
+            initial = target,
+            defaultMuseum = target.museum,
+            defaultCity = target.city,
+            onDismiss = { editing = null },
+        )
+    }
+}
+
+/** 分区标题：一整行，左侧标题 + 说明，右侧可选操作按钮。 */
+@Composable
+private fun CollectionSectionHeader(
+    title: String,
+    detail: String,
+    actionLabel: String?,
+    onAction: (() -> Unit)?,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                detail,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        if (actionLabel != null && onAction != null) {
+            TextButton(onClick = onAction, contentPadding = PaddingValues(horizontal = 10.dp)) {
+                Text("＋ $actionLabel", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -625,6 +765,462 @@ private fun RelicDetailScreen(
         Spacer(Modifier.height(24.dp))
     }
     ImageViewerDialog(viewerImage) { viewerImage = null }
+}
+
+// =========================================================================
+// 用户自建国宝：195 名单之外，现场拍到的国宝
+// =========================================================================
+
+/** 卡片：自建国宝没有官方图，用用户自己拍的照片；没拍就显示占位。 */
+@Composable
+private fun UserRelicCard(relic: UserRelic, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .55f)),
+    ) {
+        Column(Modifier.padding(9.dp)) {
+            UserRelicImage(relic, Modifier.fillMaxWidth().height(112.dp))
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("我的记录", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+            }
+            Text(relic.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            Text(relic.museum.ifBlank { relic.city }, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+@Composable
+private fun UserRelicImage(relic: UserRelic, modifier: Modifier) {
+    val context = LocalContext.current
+    val imageLoader = remember(context) { MuseumImageLoaderHolder.get(context) }
+    val photo = relic.photo
+    Box(modifier.clip(RoundedCornerShape(14.dp)).background(placeholderBrush(relic.id)), contentAlignment = Alignment.Center) {
+        // 没拍照时，占位图里的说明必须能让用户知道「这里应该有张照片」，
+        // 而不是以为图片加载失败。
+        Text(if (photo.isNullOrBlank()) "还没拍照" else "", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+        if (!photo.isNullOrBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context).data(File(photo)).crossfade(false).build(),
+                imageLoader = imageLoader,
+                contentDescription = relic.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+/** 详情页：自建国宝没有「为什么不能出境」这类权威文案，空白就不显示对应区块。 */
+@Composable
+private fun UserRelicDetailScreen(
+    repository: MuseumRepository,
+    viewModel: MuseumViewModel,
+    relic: UserRelic,
+    revision: Int,
+    onBack: () -> Unit,
+    onOpenMuseum: (String, String) -> Unit,
+) {
+    var viewerImage by remember { mutableStateOf<GalleryImage?>(null) }
+    var editing by remember { mutableStateOf(false) }
+    var confirmingDelete by remember { mutableStateOf(false) }
+    // 详情页需要跟编辑联动：编辑后 revision 变化，重新从仓库取一份最新的。
+    val latest = remember(revision, relic.id) { repository.userRelic(relic.id) ?: relic }
+    val galleryImages = remember(latest.photo) {
+        buildList {
+            latest.photo?.takeIf { it.isNotBlank() }?.let { path ->
+                add(GalleryImage(File(path), "我的照片", latest.name))
+            }
+        }
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).background(MaterialTheme.colorScheme.background)) {
+        PageHeader("‹ 返回国宝总览", latest.name, "${latest.era ?: "年代不详"} · ${latest.category ?: "类别未填"}", onBack)
+        if (galleryImages.isNotEmpty()) {
+            RelicImageCarousel(galleryImages, Modifier.padding(horizontal = 22.dp)) { viewerImage = it }
+        } else {
+            UserRelicImage(latest, Modifier.fillMaxWidth().height(230.dp).padding(horizontal = 22.dp))
+        }
+        UserRelicMuseumCard(latest, repository, onOpenMuseum)
+        if (!latest.reason.isNullOrBlank()) {
+            SectionLabel("记录说明")
+            Text(latest.reason, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 22.dp))
+        }
+        if (!latest.story.isNullOrBlank()) {
+            SectionLabel("详细故事")
+            Text(latest.story, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 22.dp))
+        }
+        if (latest.reason.isNullOrBlank() && latest.story.isNullOrBlank()) {
+            Text(
+                "还没有补充说明。你可以编辑这条记录，写点看到的细节，方便以后回忆起它。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 22.dp, vertical = 16.dp),
+            )
+        }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                onClick = { editing = true },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+            ) { Text("编辑", color = Color.White) }
+            OutlinedButton(
+                onClick = { confirmingDelete = true },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp),
+            ) { Text("删除") }
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+    ImageViewerDialog(viewerImage) { viewerImage = null }
+    if (editing) {
+        UserRelicEditorSheet(
+            repository = repository,
+            viewModel = viewModel,
+            initial = latest,
+            defaultMuseum = latest.museum,
+            defaultCity = latest.city,
+            onDismiss = { editing = false },
+        )
+    }
+    if (confirmingDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmingDelete = false },
+            title = { Text("删除这条国宝记录？") },
+            text = { Text("「${latest.name}」和它的照片会一起删掉，删了无法恢复。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingDelete = false
+                    viewModel.removeUserRelic(latest.id)
+                    onBack()
+                }) { Text("删除") }
+            },
+            dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text("取消") } },
+        )
+    }
+}
+
+/** 自建国宝所在的博物馆卡片：能打开详情就走博物馆页，馆不存在就退化成纯展示。 */
+@Composable
+private fun UserRelicMuseumCard(
+    relic: UserRelic,
+    repository: MuseumRepository,
+    onOpenMuseum: (String, String) -> Unit,
+) {
+    if (relic.museum.isBlank()) {
+        Card(
+            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text("记录时没有填博物馆", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        return
+    }
+    val museumExists = repository.museumInfo(relic.museum) != null
+    val open = { if (museumExists) onOpenMuseum(relic.city, relic.museum) }
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 22.dp, vertical = 8.dp)
+            .then(if (museumExists) Modifier.clickable { open() } else Modifier),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Museum, null, tint = MaterialTheme.colorScheme.primary)
+            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                Text(relic.museum, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    listOfNotNull(relic.city.takeIf { it.isNotBlank() }, "我拍到的国宝").joinToString(" · "),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+            if (museumExists) Icon(Icons.Outlined.KeyboardArrowRight, null)
+        }
+    }
+}
+
+/**
+ * 新增 / 编辑自建国宝的底部面板。
+ *
+ * 只有「名称」是必填项。用户是在展柜前拍的照，不该被迫先填年代、类别、博物馆——
+ * 能少填一项就少填一项，剩下的都能以后再补。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UserRelicEditorSheet(
+    repository: MuseumRepository,
+    viewModel: MuseumViewModel,
+    initial: UserRelic?,
+    defaultMuseum: String,
+    defaultCity: String,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val isEdit = initial != null
+    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
+    var museum by remember { mutableStateOf(initial?.museum?.ifBlank { defaultMuseum }.orEmpty()) }
+    var city by remember { mutableStateOf(initial?.city?.ifBlank { defaultCity }.orEmpty()) }
+    var era by remember { mutableStateOf(initial?.era.orEmpty()) }
+    var category by remember { mutableStateOf(initial?.category.orEmpty()) }
+    var reason by remember { mutableStateOf(initial?.reason.orEmpty()) }
+    var story by remember { mutableStateOf(initial?.story.orEmpty()) }
+    var museumUrl by remember { mutableStateOf(initial?.museumUrl.orEmpty()) }
+    var photoPath by remember { mutableStateOf(initial?.photo.orEmpty()) }
+    var pendingCameraPath by remember { mutableStateOf<String?>(null) }
+    var importing by remember { mutableStateOf(false) }
+    var showMore by remember { mutableStateOf(false) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val path = pendingCameraPath
+        pendingCameraPath = null
+        if (success && path != null && repository.photoFile(path).length() > 0L) {
+            // 换照片时把上一张删掉，避免废弃文件一直被备份带上。
+            if (photoPath.isNotBlank() && photoPath != path) repository.deletePhoto(photoPath)
+            photoPath = path
+        } else if (path != null) {
+            repository.deletePhoto(path)
+        }
+    }
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        importing = true
+        val imported = repository.importPhoto(uri)
+        importing = false
+        if (imported != null) {
+            if (photoPath.isNotBlank() && photoPath != imported) repository.deletePhoto(photoPath)
+            photoPath = imported
+        } else {
+            Toast.makeText(context, "这张图片读不出来，换一张试试", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun openCamera() {
+        val path = runCatching { repository.createCameraPhoto() }.getOrNull()
+        if (path == null) {
+            Toast.makeText(context, "无法创建照片文件", Toast.LENGTH_SHORT).show()
+            return
+        }
+        runCatching {
+            pendingCameraPath = path
+            cameraLauncher.launch(repository.cameraUri(path))
+        }.onFailure {
+            pendingCameraPath = null
+            repository.deletePhoto(path)
+            Toast.makeText(context, "没有找到可用的相机应用", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun save() {
+        if (name.isBlank()) {
+            Toast.makeText(context, "先给它起个名字", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val ok = if (isEdit && initial != null) {
+            viewModel.updateUserRelic(
+                id = initial.id,
+                name = name,
+                museum = museum,
+                city = city,
+                era = era,
+                category = category,
+                reason = reason,
+                story = story,
+                photo = photoPath,
+                museumUrl = museumUrl,
+            )
+        } else {
+            viewModel.addUserRelic(
+                name = name,
+                museum = museum,
+                city = city,
+                era = era,
+                category = category,
+                reason = reason,
+                story = story,
+                photo = photoPath,
+                museumUrl = museumUrl,
+            ) != null
+        }
+        if (ok) {
+            onDismiss()
+        } else {
+            Toast.makeText(context, "保存失败，检查一下名称是否为空", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 用户填了博物馆名但没填城市时，从名录里自动带出城市，省一次输入。
+    val guessedCity = remember(museum) { repository.museumInfo(museum.trim())?.city }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        LazyColumn(
+            Modifier.fillMaxWidth().fillMaxHeight(.9f).imePadding(),
+            contentPadding = PaddingValues(start = 22.dp, top = 4.dp, end = 22.dp, bottom = 28.dp),
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (isEdit) "编辑国宝记录" else "记一件其他国宝",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "195 名单之外的国宝，拍下来单独记一条。",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    Button(
+                        onClick = { save() },
+                        enabled = !importing,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                    ) { Text("保存", color = Color.White) }
+                }
+            }
+            item {
+                Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { openCamera() },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                    ) { Text(if (photoPath.isBlank()) "拍一张" else "重拍") }
+                    OutlinedButton(
+                        onClick = { runCatching { galleryLauncher.launch(arrayOf("image/*")) }.onFailure { Toast.makeText(context, "没有可用的相册应用", Toast.LENGTH_SHORT).show() } },
+                        enabled = !importing,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                    ) { Text(if (importing) "导入中…" else "从相册选") }
+                }
+            }
+            if (photoPath.isNotBlank()) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(File(photoPath)).crossfade(false).build(),
+                            contentDescription = name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)),
+                        )
+                        TextButton(
+                            onClick = {
+                                repository.deletePhoto(photoPath)
+                                photoPath = ""
+                            },
+                            modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
+                        ) { Text("移除照片") }
+                    }
+                }
+            }
+            item {
+                OutlinedTextField(
+                    name, { name = it },
+                    Modifier.fillMaxWidth().padding(top = 16.dp),
+                    label = { Text("名称（必填）") },
+                    placeholder = { Text("例如：越王勾践剑") },
+                    singleLine = true,
+                )
+            }
+            item {
+                OutlinedTextField(
+                    museum, { museum = it },
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    label = { Text("在哪看到的博物馆") },
+                    placeholder = { Text("例如：湖北省博物馆") },
+                    singleLine = true,
+                    supportingText = {
+                        Text(
+                            if (guessedCity != null && city.isBlank()) "城市已自动填为 $guessedCity" else "可以先留空，以后再补",
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    },
+                )
+            }
+            item {
+                OutlinedTextField(
+                    city, { city = it },
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    label = { Text("城市") },
+                    placeholder = { Text(guessedCity ?: "例如：武汉") },
+                    singleLine = true,
+                )
+            }
+            item {
+                TextButton(onClick = { showMore = !showMore }, contentPadding = PaddingValues(0.dp)) {
+                    Text(if (showMore) "收起更多信息" else "补充年代 / 类别 / 笔记（可选）")
+                }
+            }
+            if (showMore) {
+                item {
+                    OutlinedTextField(
+                        era, { era = it },
+                        Modifier.fillMaxWidth().padding(top = 4.dp),
+                        label = { Text("年代") },
+                        placeholder = { Text("例如：春秋晚期") },
+                        singleLine = true,
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        category, { category = it },
+                        Modifier.fillMaxWidth().padding(top = 10.dp),
+                        label = { Text("类别") },
+                        placeholder = { Text("例如：青铜器") },
+                        singleLine = true,
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        reason, { reason = it },
+                        Modifier.fillMaxWidth().padding(top = 10.dp),
+                        label = { Text("记录说明") },
+                        placeholder = { Text("它为什么让你想记下来") },
+                        minLines = 2,
+                        maxLines = 6,
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        story, { story = it },
+                        Modifier.fillMaxWidth().padding(top = 10.dp),
+                        label = { Text("详细故事") },
+                        placeholder = { Text("现场导览、讲解或自己查到的细节") },
+                        minLines = 3,
+                        maxLines = 8,
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        museumUrl, { museumUrl = it },
+                        Modifier.fillMaxWidth().padding(top = 10.dp),
+                        label = { Text("参考链接（可选）") },
+                        placeholder = { Text("官方介绍页或资料页") },
+                        singleLine = true,
+                    )
+                }
+            }
+            item {
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = { save() },
+                    enabled = !importing,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(contentColor = Color.White),
+                ) { Text(if (isEdit) "保存修改" else "保存这件国宝", color = Color.White) }
+            }
+        }
+    }
 }
 
 /** 还没有任何记录时的引导卡片。 */
