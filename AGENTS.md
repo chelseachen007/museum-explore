@@ -13,6 +13,8 @@
 - `杭州国宝地图.html`：杭州地图与路线原型。
 - `195件永禁文物.json`：结构化文物数据。
 - `tools/`：数据构建、图片处理和校验脚本。
+- `design/`：设计稿与图标源文件（`design-*.png`、`design-mockups.html`、`app-icon.*`）。只是素材，不参与构建，根目录不再放散图。
+- `artifacts/`：打包产物（APK 等），已在 `.gitignore` 里，只留本机。发版脚本会把 APK 复制一份到这里。
 - 启动器脚本：仅用于本地预览和构建，不在其中保存密钥。
 
 ### Android 资产（`android/app/src/main/assets/`）
