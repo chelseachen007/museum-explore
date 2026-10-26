@@ -100,7 +100,8 @@ def read_notes(path: str | None, notes: list[str]) -> list[str]:
     lines.extend(note.strip() for note in notes if note.strip())
     unique: list[str] = []
     for line in lines:
-        line = re.sub(r"^[\-\*\d\.\)、\s]+", "", line).strip()
+        # 只去掉「1. 」「- 」「* 」这类列表前缀，不能连说明开头的数字一起吃掉。
+        line = re.sub(r"^\s*(?:[-*]\s+|\d+[\.\)、]\s*)", "", line).strip()
         if line and line not in unique:
             unique.append(line)
     if not unique:
