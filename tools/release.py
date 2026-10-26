@@ -21,7 +21,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 from datetime import date
 from pathlib import Path
 
@@ -289,7 +288,11 @@ def main(argv: list[str]) -> int:
     apk = build_apk(env)
     verify_apk(apk, version, code)
 
-    artifact = Path(tempfile.mkdtemp(prefix="boji-release-")) / APK_NAME.format(version=version)
+    # 产物落在仓库的 artifacts/（已在 .gitignore 里），别扔进 /tmp 那种重启就清、
+    # 用户也找不到的地方——发版后想手动补传 APK 时直接在这里拿。
+    artifacts = ROOT / "artifacts"
+    artifacts.mkdir(exist_ok=True)
+    artifact = artifacts / APK_NAME.format(version=version)
     shutil.copy2(apk, artifact)
     print(f"\nAPK: {artifact} ({artifact.stat().st_size / 1024 / 1024:.0f} MB)")
 

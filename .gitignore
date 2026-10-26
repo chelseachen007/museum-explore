@@ -11,5 +11,8 @@ android/app/build/
 # APK 签名校验副产品，不进版本库
 *.idsig
 
+# 打包产物（APK 等）放 artifacts/，只留本机，不进版本库
+artifacts/
+
 # 分批写手任务清单（临时产物，合并进主数据后可删）
 .drafts/details/
