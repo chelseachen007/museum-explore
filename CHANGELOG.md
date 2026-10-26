@@ -2,28 +2,6 @@
 
 本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
 
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
-本文件由 `tools/release.py` 维护。每条版本说明都对应 GitHub Release。
-
 ## v0.7.1 · 2026-10-25
 
 - 新增国内 302 家、海外 182 家博物馆名录，覆盖 133 座城市和 46 个国家，随时可继续扩充
