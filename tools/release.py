@@ -155,8 +155,13 @@ def write_changelog(version: str, notes: list[str], today: str) -> None:
         if f"## v{version}" in text:
             fail(f"CHANGELOG.md 已有 v{version}，请改版本号")
         if text.startswith("# 更新日志"):
-            text = text.replace("# 更新日志", header.rstrip(), 1)
-            CHANGELOG_FILE.write_text(text.rstrip() + "\n" + entry, encoding="utf-8")
+            # 旧版本每次发版都会把 header 再插一遍，留下十几行重复的说明。
+            # 这里先把已有的说明行全部清掉，再重新拼一次，保证只留一份。
+            body = re.sub(r"^# 更新日志[ \t]*\n", "", text, count=1)
+            body = re.sub(
+                r"^\s*\n?本文件由 `tools/release\.py` 维护。.*$", "", body, flags=re.MULTILINE
+            ).lstrip("\n")
+            CHANGELOG_FILE.write_text(header + "\n" + body.rstrip() + "\n" + entry, encoding="utf-8")
         else:
             CHANGELOG_FILE.write_text(header + entry + "\n" + text, encoding="utf-8")
     else:
