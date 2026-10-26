@@ -8,8 +8,8 @@ android { namespace 'cn.chenjie.museumexplore'; compileSdk 35
         applicationId 'cn.chenjie.museumexplore'
         minSdk 29
         targetSdk 35
-        versionCode 711
-        versionName '0.7.11'
+        versionCode 800
+        versionName '0.8.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         // 只带真机需要的两种 ARM ABI：地图 SDK 的 .so 每个 ABI 约 15-24 MB。
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
