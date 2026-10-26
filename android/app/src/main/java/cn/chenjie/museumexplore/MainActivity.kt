@@ -192,7 +192,7 @@ internal object MuseumImageLoaderHolder {
                     .addInterceptor { chain ->
                         chain.proceed(
                             chain.request().newBuilder()
-                                .header("User-Agent", "BoJi/0.8.0 (Android museum exploration app)")
+                                .header("User-Agent", "BoJi/0.9.0 (Android museum exploration app)")
                                 .build(),
                         )
                     }
@@ -413,7 +413,7 @@ private fun MuseumApp(viewModel: MuseumViewModel = viewModel()) {
         }
     }
 
-    if (aboutDialog) InfoDialog("博迹", "195 件永禁出境文物\n本地记录版\n版本 0.8.0\n\n想去、已到访、已看到、照片、感想和参观时间线默认保存在本机。官方入口交给微信或系统浏览器打开，应用不读取你的位置。") { aboutDialog = false }
+    if (aboutDialog) InfoDialog("博迹", "195 件永禁出境文物\n本地记录版\n版本 0.9.0\n\n想去、已到访、已看到、照片、感想和参观时间线默认保存在本机。官方入口交给微信或系统浏览器打开，应用不读取你的位置。") { aboutDialog = false }
     if (protocolDialog) InfoDialog("隐私与协议", "本应用不申请定位权限，不读取或保存位置信息。到访记录只来自你的手动确认。\n\n想去、已到访、已看到、照片、感想和时间线默认只保存在本机，不上传第三方。打开官方小程序或网站时，由微信或系统浏览器处理页面内容，适用对应服务的隐私政策。\n\nWikimedia Commons 图片按数据中的许可信息使用。") { protocolDialog = false }
 }
 
@@ -2093,7 +2093,7 @@ private fun MoreScreen(
         SettingsRow("导出备份", "保存状态、时间线、照片和感想", Icons.Outlined.UploadFile, onExport)
         SettingsRow("导入备份", "从 ZIP 恢复本机记录", Icons.Outlined.CollectionsBookmark, onImport)
         SectionLabel("关于")
-        SettingsRow("关于与更新", "版本 0.8.0 · 检查更新", Icons.Outlined.Info, onAbout)
+        SettingsRow("关于与更新", "版本 0.9.0 · 检查更新", Icons.Outlined.Info, onAbout)
         SettingsRow("隐私与协议", "本地存储说明、第三方服务协议", Icons.Outlined.Policy, onProtocol)
         Spacer(Modifier.height(20.dp))
     }
