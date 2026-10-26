@@ -202,6 +202,91 @@ class MuseumRepository(private val context: Context) {
         removed.second?.photos?.forEach { deletePhoto(it.path) }
     }
 
+    /** 写一条感想要落到哪一天。返回「应该写进哪一次参观」+「要不要新建」。 */
+    data class JournalTarget(val visitId: String?, val create: Boolean)
+
+    /**
+     * 从一个日期起算的记录落点。
+     *
+     * 规则简单到用户能自己解释：
+     * - 那天已经有一条到访 → 写进那一条，一次参观只有一张卡片。
+     * - 那天没有 → 新建一次到访（用户写了感想又说了是哪天，就是去过了）。
+     * - 日期留空 → 新建一条「日期待补充」的参观。清空日期通常意味着「记不清哪天」，是另一趟，
+     *   不能塞回上一趟里；用户之后可以在时间线上补日期。
+     *
+     * 这样录旧账不会覆盖上一次的记录，也不会把「又去了一次」硬塞进第一张卡片。
+     */
+    fun journalTargetOn(museum: String, startedAt: Long?): JournalTarget {
+        if (startedAt == null) return JournalTarget(null, create = true)
+        val sameDay = exploration().confirmedVisitsForMuseumFamily(museum)
+            .sortedWith(VISIT_ORDER)
+            .firstOrNull { it.hasExactDate && isSameDay(it.startedAt!!, startedAt) }
+        return if (sameDay != null) JournalTarget(sameDay.id, create = false) else JournalTarget(null, create = true)
+    }
+
+    /**
+     * 保存一条感想，同时落定它的参观日期。
+     *
+     * 落点全部交给 [journalTargetOn] 决定：界面只管「写了什么、哪天」，
+     * 「写进哪一次」只有一处规则，不会出现写入和读取各算一遍的错位。
+     *
+     * [visitId] 非空表示用户正在编辑某一次既有的参观，此时只改那一条。
+     */
+    fun saveRecordOnDate(
+        museum: String,
+        note: String,
+        photos: List<VisitPhoto>,
+        startedAt: Long?,
+        visitId: String? = null,
+        branch: String? = null,
+    ): String? {
+        val targetId = if (branch.isNullOrBlank()) museum else "$museum · $branch"
+        if (visitId != null && updateVisitJournal(visitId, note, photos)) {
+            if (startedAt != null) applyVisitDate(visitId, startedAt)
+            return visitId
+        }
+        if (note.isBlank() && photos.isEmpty()) return null
+        val target = journalTargetOn(targetId, startedAt)
+        if (!target.create && target.visitId != null) {
+            updateVisitJournal(target.visitId, note, photos)
+            return target.visitId
+        }
+        val state = exploration()
+        val draft = ExplorationOps.addVisit(
+            state,
+            museumId = targetId,
+            city = cityOfMuseum(museum),
+            startedAt = startedAt,
+            precision = if (startedAt == null) DatePrecision.UNKNOWN else DatePrecision.EXACT,
+            source = RecordSource.MANUAL,
+            idFactory = ::newId,
+        ).second
+        saveExploration(
+            state.copy(
+                visits = (state.visits + draft).map {
+                    if (it.id == draft.id) {
+                        it.copy(
+                            // 只有没写日期的才挂「待确认到访」，写了日期就算真的去过。
+                            pendingConfirmation = startedAt == null,
+                            note = note.trim(),
+                            photos = photos,
+                        )
+                    } else {
+                        it
+                    }
+                },
+            ),
+        )
+        return draft.id
+    }
+
+    /** 改日期。待确认的记录直接转为已确认；同一天已有那次时不改，保持一次到访一张卡片。 */
+    private fun applyVisitDate(visitId: String, startedAt: Long) {
+        val visit = exploration().visit(visitId) ?: return
+        if (visit.hasExactDate && isSameDay(visit.startedAt!!, startedAt)) return
+        setVisitDate(visitId, startedAt)
+    }
+
     fun setSeen(id: Int, value: Boolean, museumId: String? = null) {
         val state = exploration()
         val next = if (value) {

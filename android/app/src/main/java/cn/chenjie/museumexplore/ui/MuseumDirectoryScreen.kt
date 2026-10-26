@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Merge
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Tune
@@ -63,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.chenjie.museumexplore.data.MuseumRepository
+import cn.chenjie.museumexplore.model.MuseumRecord
 import cn.chenjie.museumexplore.model.MuseumSource
 
 /**
@@ -85,7 +87,10 @@ fun MuseumDirectoryScreen(
     var adding by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<String?>(null) }
     var merging by remember { mutableStateOf(false) }
-
+    // 从清单直接写感想：不先进详情页、也不先确认到访。
+    // 用户路过某家馆想起上次来过，应该两下就能把话记下来。
+    var journalMuseum by remember { mutableStateOf<String?>(null) }
+    var journalBranch by remember { mutableStateOf<String?>(null) }
     // 全量条目只在数据变更时算一次；搜索和筛选在缓存结果上过滤，
     // 输入框每敲一个字都不会再回仓库层重算。
     val allEntries = remember(revision) { repository.museumEntries() }
@@ -157,10 +162,71 @@ fun MuseumDirectoryScreen(
                     },
                     badge = if (branchCount > 0) "$branchCount 个馆区" else null,
                     visited = remember(entry.name, revision) { repository.isVisited(entry.name) },
+                    recordCount = remember(entry.name, revision) {
+                        repository.museumRecords(entry.name).count { it.record.note.isNotBlank() || it.record.photos.isNotEmpty() }
+                    },
                     onClick = { onOpenMuseum(entry.city, entry.name) },
+                    onWriteJournal = {
+                        // 有馆区的馆先打开一个「整馆 / 某个馆区」的选择，其余直接开面板。
+                        journalMuseum = entry.name
+                        journalBranch = null
+                    },
                     onEdit = if (entry.source == MuseumSource.USER) ({ editing = entry.name }) else null,
                 )
             }
+        }
+    }
+
+    // 写感想：有馆区的馆先选目标，再开编辑面板。
+    journalMuseum?.let { museum ->
+        val branches = remember(museum, revision) { repository.branches(museum) }
+        if (branches.isNotEmpty() && journalBranch == null) {
+            JournalTargetDialog(
+                museum = museum,
+                branches = branches.map { it.name },
+                onPick = { branch -> journalBranch = branch ?: "" },
+                onDismiss = { journalMuseum = null },
+            )
+        } else {
+            val branch = journalBranch.orEmpty()
+            val targetId = if (branch.isBlank()) museum else "$museum · $branch"
+            // 从清单进来一律是「写下这次」：面板必须是空白的新记录。
+            // 回填上一次的内容会让用户分不清哪句是这次写的，写完还容易把旧记录冲掉。
+            val initial = MuseumRecord()
+            // 「上次那天」要的是最近一次真的去过的那天：日期待补充的记录排在
+            // VISIT_ORDER 末尾，直接取 lastOrNull 会拿到它，等于没有日期可用。
+            val lastDate = remember(museum, revision) {
+                val state = repository.exploration()
+                val visits = if (repository.hasBranches(museum)) {
+                    state.confirmedVisitsForMuseumFamily(museum)
+                } else {
+                    state.confirmedVisitsForMuseum(museum)
+                }
+                visits.filter { it.hasExactDate }.maxByOrNull { it.startedAt!! }?.startedAt
+            }
+            VisitRecordSheet(
+                museum = museum,
+                relics = remember(museum, revision) { repository.relicsForMuseum(museum) },
+                initialRecord = initial,
+                presetRelicId = null,
+                repository = repository,
+                museumId = targetId,
+                // 从清单进来总是「写下这次」：不指向任何一次既有到访，保存即新建。
+                visitId = null,
+                blankDateMeansUnknown = true,
+                lastDate = lastDate,
+                onSave = { note, photos, startedAt ->
+                    viewModel.saveRecordOnDate(
+                        museum = museum,
+                        note = note,
+                        photos = photos,
+                        startedAt = startedAt,
+                        visitId = null,
+                        branch = branch,
+                    )
+                },
+                onDismiss = { journalMuseum = null; journalBranch = null },
+            )
         }
     }
 
@@ -216,9 +282,45 @@ fun MuseumDirectoryScreen(
     }
 }
 
+/**
+ * 写感想前先确定写哪一片。
+ *
+ * 「整馆」传回 null，代表内容落到父馆名下——详情页是整馆视角，照样看得到。
+ * 只有真的去过某个馆区的人才选馆区，不强迫所有人先做这道题。
+ */
 @Composable
-private fun DirectoryHeader(count: Int, onBack: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 20.dp)) {
+private fun JournalTargetDialog(
+    museum: String,
+    branches: List<String>,
+    onPick: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("写这次是去的哪一片？") },
+        text = {
+            Column {
+                Text(
+                    "选馆区会让记录挂到那片地址上；不确定就选整馆。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                listOf<String?>(null).plus(branches).forEach { branch ->
+                    Text(
+                        branch ?: "整馆（不细分馆区）",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.fillMaxWidth().clickable { onPick(branch) }.padding(vertical = 12.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
+}
+
+@Composable
+private fun DirectoryHeader(count: Int, onBack: () -> Unit) {    Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 20.dp)) {
         TextButton(onClick = onBack, contentPadding = PaddingValues(0.dp)) {
             Text("‹ 返回", color = MaterialTheme.colorScheme.primary)
         }
@@ -236,7 +338,9 @@ private fun MuseumDirectoryRow(
     subtitle: String,
     badge: String?,
     visited: Boolean,
+    recordCount: Int,
     onClick: () -> Unit,
+    onWriteJournal: () -> Unit,
     onEdit: (() -> Unit)?,
 ) {
     Card(
@@ -244,24 +348,40 @@ private fun MuseumDirectoryRow(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(44.dp).clip(RoundedCornerShape(13.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) { Text("博", style = MaterialTheme.typography.titleMedium) }
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (badge != null) {
-                    Text(badge, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(44.dp).clip(RoundedCornerShape(13.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) { Text("博", style = MaterialTheme.typography.titleMedium) }
+                Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                    Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (badge != null) {
+                        Text(badge, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                if (visited) {
+                    Text("已到访", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                }
+                if (onEdit != null) {
+                    IconButton(onClick = onEdit) { Icon(Icons.Outlined.Tune, contentDescription = "编辑") }
                 }
             }
-            if (visited) {
-                Text("已到访", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-            }
-            if (onEdit != null) {
-                IconButton(onClick = onEdit) { Icon(Icons.Outlined.Tune, contentDescription = "编辑") }
+            // 写感想是这里的第二个主操作：不用先进详情页，点开就能写。
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (recordCount > 0) "已写 $recordCount 条记录" else "还没写过记录",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onWriteJournal) {
+                    Icon(Icons.Outlined.EditNote, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (recordCount > 0) "继续写" else "写感想")
+                }
             }
         }
     }

@@ -68,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.chenjie.museumexplore.data.MuseumRepository
+import cn.chenjie.museumexplore.data.VisitDateInput
 import cn.chenjie.museumexplore.model.MuseumRecord
 import cn.chenjie.museumexplore.model.Relic
 import cn.chenjie.museumexplore.model.VisitPhoto
@@ -239,12 +240,34 @@ fun VisitRecordSheet(
     museumId: String = museum,
     /** 其他馆的文物。默认只列本馆馆藏，出差看到别家的文物再展开这里。 */
     otherRelics: List<Relic> = emptyList(),
-    onSave: (String, List<VisitPhoto>) -> Unit,
+    /** 正在编辑的到访；null 表示这次保存等于新建一次参观。 */
+    visitId: String? = null,
+    /**
+     * 日期留空时怎么落账：
+     * - false（默认，沿用旧行为）：写进这座馆现有的记录，一条都没有就建「日期待补充」。
+     * - true：日期留空就明确当作「日期待补充」，新建一次到访，不碰已有记录。
+     * 用户在时间线上点「记一次以前的参观」时要的是后者。
+     */
+    blankDateMeansUnknown: Boolean = false,
+    /** 上次用过的日期，给「再去了一趟」提供一键复用。 */
+    lastDate: Long? = null,
+    /** 交回 (感想, 照片, 参观日期)。日期为 null 表示用户留空/填了看不懂的内容。 */
+    onSave: (String, List<VisitPhoto>, Long?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var note by rememberSaveable(museum, initialRecord.updatedAt) { mutableStateOf(initialRecord.note) }
+    var note by rememberSaveable(museum, initialRecord.updatedAt, visitId) { mutableStateOf(initialRecord.note) }
+    // 新建时默认就是今天：绝大多数人是逛完当场记，填日期只为了改掉它。
+    var dateText by rememberSaveable(museum, initialRecord.updatedAt, visitId) {
+        mutableStateOf(
+            when {
+                visitId == null -> VisitDateInput.format(System.currentTimeMillis())
+                initialRecord.updatedAt > 0L -> VisitDateInput.format(initialRecord.updatedAt)
+                else -> ""
+            },
+        )
+    }
     var photos by remember(museum, initialRecord.updatedAt) {
         mutableStateOf(initialRecord.photos.map { DraftPhoto(it.path, it.relicId) })
     }
@@ -253,9 +276,15 @@ fun VisitRecordSheet(
     var cameraPath by remember { mutableStateOf<String?>(null) }
     val relicNames = remember(relics) { relics.associate { it.id to it.name } }
 
+    val dateRaw = dateText.trim()
+    val parsedDate = remember(dateRaw) { if (dateRaw.isEmpty()) null else VisitDateInput.parse(dateRaw) }
+    val dateInvalid = dateRaw.isNotEmpty() && parsedDate == null
+    // 日期只决定「算哪一天」，不阻塞保存：解析不了就按留空处理，并在上面说清楚。
+    val startedAt = parsedDate
+
     fun commit(silent: Boolean) {
         val savedPhotos = photos.map { VisitPhoto(it.path, it.relicId) }
-        onSave(note, savedPhotos)
+        onSave(note, savedPhotos, startedAt)
         if (!silent) {
             Toast.makeText(
                 context,
@@ -314,7 +343,10 @@ fun VisitRecordSheet(
         // 但内容没变化时不写，否则只是打开看一眼就会把上一次的记录日期刷成今天。
         onDismissRequest = {
             val savedPhotos = photos.map { VisitPhoto(it.path, it.relicId) }
-            val dirty = note != initialRecord.note || savedPhotos != initialRecord.photos
+            val dirty = note != initialRecord.note ||
+                savedPhotos != initialRecord.photos ||
+                // 只改了日期也算改动：用户专门把日期改对，不能因为没动正文就丢掉。
+                (visitId != null && parsedDate != null && !sameDayAs(initialRecord.updatedAt, parsedDate))
             if (dirty) runCatching { commit(silent = true) }
             onDismiss()
         },
@@ -347,6 +379,25 @@ fun VisitRecordSheet(
                         colors = ButtonDefaults.buttonColors(contentColor = Color.White),
                     ) { Text("保存", color = Color.White) }
                 }
+                Spacer(Modifier.height(12.dp))
+                VisitDateField(
+                    value = dateText,
+                    onValueChange = { dateText = it },
+                    parsed = startedAt,
+                    invalid = dateInvalid,
+                    editing = visitId != null,
+                    // 保存过一次的馆，一键回到上个月那天，比翻日历快。
+                    canReuseLast = visitId == null && lastDate != null &&
+                        VisitDateInput.format(lastDate) != VisitDateInput.format(System.currentTimeMillis()),
+                    onReuseLast = { lastDate?.let { dateText = VisitDateInput.format(it) } },
+                    onClear = { dateText = "" },
+                    // 日期留空时用户要知道这条会落到哪，不能留空就算今天。
+                    blankHint = if (blankDateMeansUnknown) {
+                        "留空会存成一次「日期待补充」的参观，之后可以在时间线里补上。"
+                    } else {
+                        "留空会写进这座馆已有的一次参观。"
+                    },
+                )
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = note,
@@ -473,6 +524,83 @@ fun VisitRecordSheet(
             onDismiss = { associatingIndex = null },
         )
     }
+}
+
+/**
+ * 「去的那天」。
+ *
+ * 不弹日期选择器，直接让人打字——回忆里的日期本来就是「上个月十几号」这种模糊说法，
+ * 翻日历比敲 8 个数字慢。输入合法就显示归一化后的日期，非法就把原因写在下面，不偷偷改成今天。
+ */
+@Composable
+private fun VisitDateField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    parsed: Long?,
+    invalid: Boolean,
+    editing: Boolean,
+    canReuseLast: Boolean,
+    onReuseLast: () -> Unit,
+    onClear: () -> Unit,
+    blankHint: String,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("去的那天", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            if (editing) {
+                Text(
+                    "改日期会同时更新到访记录",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("例如 2026-10-03，留空则不确定") },
+                singleLine = true,
+                isError = invalid,
+                trailingIcon = if (value.isNotEmpty()) {
+                    {
+                        IconButton(onClick = onClear) {
+                            Icon(Icons.Outlined.Close, contentDescription = "清空日期", modifier = Modifier.size(18.dp))
+                        }
+                    }
+                } else {
+                    null
+                },
+                shape = RoundedCornerShape(14.dp),
+            )
+            if (canReuseLast) {
+                TextButton(onClick = onReuseLast, modifier = Modifier.padding(start = 6.dp)) { Text("上次那天") }
+            }
+        }
+        Text(
+            when {
+                invalid -> "没看懂这个日期。可以写 2026-10-03、2026年10月3日，或者只写 10-03。"
+                parsed != null -> {
+                    val label = SimpleDateFormat("yyyy年M月d日", Locale.CHINA).format(Date(parsed))
+                    val today = SimpleDateFormat("yyyy年M月d日", Locale.CHINA).format(Date())
+                    if (label == today) "$label · 今天" else label
+                }
+                else -> blankHint
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = if (invalid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 5.dp, start = 2.dp),
+        )
+    }
+}
+
+/** 两个时间戳是不是同一天。用来判断「只改了日期」也算脏数据。 */
+private fun sameDayAs(first: Long, second: Long): Boolean {
+    if (first <= 0L) return false
+    val fmt = SimpleDateFormat("yyyyMMdd", Locale.CHINA)
+    return fmt.format(Date(first)) == fmt.format(Date(second))
 }
 
 @Composable

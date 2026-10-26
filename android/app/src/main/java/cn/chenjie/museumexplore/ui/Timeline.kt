@@ -242,8 +242,17 @@ fun TimelineScreen(
                 val own = visitRelics.mapTo(HashSet()) { it.id }
                 relics.filterNot { it.id in own }
             },
-            onSave = { note, photos ->
-                viewModel.updateVisitJournal(visit.id, note, photos)
+            visitId = visit.id,
+            // 时间线里改日期就是改这次参观的日期，和「确认到访」是同一条数据。
+            lastDate = visit.startedAt,
+            onSave = { note, photos, startedAt ->
+                viewModel.saveRecordOnDate(
+                    museum = visit.museumId,
+                    note = note,
+                    photos = photos,
+                    startedAt = startedAt,
+                    visitId = visit.id,
+                )
             },
             onDismiss = { editingVisit = null },
         )
@@ -267,8 +276,16 @@ fun TimelineScreen(
                 val own = museumRelics.mapTo(HashSet()) { it.id }
                 relics.filterNot { it.id in own }
             },
-            onSave = { note, photos ->
-                viewModel.saveMuseumRecord(museum, note, photos)
+            // 「待整理」的旧记录：日期留空就明确存成待补充，不硬塞进别的哪天。
+            blankDateMeansUnknown = true,
+            onSave = { note, photos, startedAt ->
+                viewModel.saveRecordOnDate(
+                    museum = museum,
+                    note = note,
+                    photos = photos,
+                    startedAt = startedAt,
+                    visitId = null,
+                )
             },
             onDismiss = { editingUnfiled = null },
         )

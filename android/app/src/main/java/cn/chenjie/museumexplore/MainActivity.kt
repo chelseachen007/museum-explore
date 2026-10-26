@@ -1528,17 +1528,22 @@ private fun MuseumDetailScreen(
             presetRelicId = null,
             repository = repository,
             museumId = if (branch.isNullOrBlank()) museum else "$museum · $branch",
+            visitId = editingId,
             // 出差时在别的馆看到文物很常见：默认只给本馆几条，需要时再展开全量。
             otherRelics = remember(relics) {
                 val own = relics.mapTo(HashSet()) { it.id }
                 repository.relics().filterNot { it.id in own }
             },
-            onSave = { note, photos ->
-                if (editingId != null) {
-                    viewModel.updateVisitJournal(editingId, note, photos)
-                } else {
-                    viewModel.saveBranchRecord(museum, branch, note, photos)
-                }
+            // 日期在面板里能直接改：写感想和「这是哪天去」应该是同一件事，不该再跳一层对话框。
+            onSave = { note, photos, startedAt ->
+                viewModel.saveRecordOnDate(
+                    museum = museum,
+                    note = note,
+                    photos = photos,
+                    startedAt = startedAt,
+                    visitId = editingId,
+                    branch = branch,
+                )
             },
             onDismiss = { showRecordSheet = false; editingVisitId = null },
         )

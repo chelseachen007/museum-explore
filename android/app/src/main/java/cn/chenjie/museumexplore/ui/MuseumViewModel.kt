@@ -64,6 +64,19 @@ class MuseumViewModel(application: Application) : AndroidViewModel(application) 
         repository.saveBranchRecord(museum, branch, note, photos)
         refresh()
     }
+
+    /** 保存感想，同时确定这次参观是哪天。visitId 为空时按日期新建一次到访。 */
+    fun saveRecordOnDate(
+        museum: String,
+        note: String,
+        photos: List<VisitPhoto>,
+        startedAt: Long?,
+        visitId: String?,
+        branch: String? = null,
+    ) {
+        repository.saveRecordOnDate(museum, note, photos, startedAt, visitId, branch)
+        refresh()
+    }
     fun saveMapKey(value: String) { repository.saveMapKey(value); refresh() }
 
     // 博物馆目录：自建馆、改名、合并馆区
