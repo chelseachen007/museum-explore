@@ -179,7 +179,10 @@ def validate_and_test(env: dict[str, str]) -> None:
 
 
 def build_apk(env: dict[str, str]) -> Path:
-    run([str(GRADLE), "-p", "android", "clean", "assembleDebug"], env=env)
+    # clean 必须单独跑一次：和 assembleDebug 塞进同一次调用时，clean 会在别的任务
+    # 已经排队的情况下删掉上游产物，Gradle 报 "Unable to make progress running work"。
+    run([str(GRADLE), "-p", "android", "clean"], env=env)
+    run([str(GRADLE), "-p", "android", "assembleDebug"], env=env)
     if not APK_SOURCE.exists():
         fail(f"没有生成 APK: {APK_SOURCE}")
     return APK_SOURCE
