@@ -56,8 +56,11 @@ fun MuseumGuideScreen(
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             GuideHeader(guide, onBack)
-            guide.sections.forEach { section ->
-                GuideSectionRow(section, onOpen = { onOpenSection(section.id) })
+            guide.grouped().forEach { group ->
+                GuideGroupHeader(group.title)
+                group.sections.forEach { section ->
+                    GuideSectionRow(section, onOpen = { onOpenSection(section.id) })
+                }
             }
             if (guide.glossary.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
@@ -148,6 +151,22 @@ private fun GuideHeader(
     }
 }
 
+/**
+ * 目录里的分组小标题。
+ *
+ * 不做成可折叠的：手册总共十几节，默认全折叠的目录等于让用户多点十几下。
+ */
+@Composable
+private fun GuideGroupHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 24.dp, end = 22.dp, top = 18.dp, bottom = 4.dp),
+    )
+}
+
 @Composable
 private fun GuideSectionRow(section: GuideSection, onOpen: () -> Unit) {
     Card(
@@ -226,6 +245,14 @@ private fun GlossaryCard(guide: MuseumGuide) {
                                                 item.meaning,
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        // hint 讲「它落在哪一门知识里」，比读音更能回答「这是什么字」。
+                                        if (item.hint.isNotBlank()) {
+                                            Text(
+                                                item.hint,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = .85f),
                                             )
                                         }
                                     }

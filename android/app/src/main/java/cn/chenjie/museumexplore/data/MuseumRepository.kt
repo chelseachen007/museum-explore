@@ -1461,6 +1461,7 @@ class MuseumRepository(private val context: Context) {
                                 pinyin = cleanDisplay(entry.optString("pinyin")),
                                 // 地名类条目允许没有释义，这里不要用占位符补，否则界面上全是重复的「—」。
                                 meaning = cleanDisplay(entry.optString("meaning")),
+                                hint = entry.optionalString("hint").orEmpty(),
                             ),
                         )
                     }

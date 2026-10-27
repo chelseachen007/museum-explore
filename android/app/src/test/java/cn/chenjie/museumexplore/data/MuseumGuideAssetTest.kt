@@ -60,6 +60,14 @@ class MuseumGuideAssetTest {
     }
 
     @Test
+    fun `深度专题三节都在且能挂到目录分组`() {
+        // 这三节是通用品类之外的「知识地图」，删掉或改 id 会让目录少一块且不易察觉。
+        listOf("kilns", "painting-history", "calligraphy-history").forEach { id ->
+            assertTrue("缺了专题节 $id", raw.contains("\"id\": \"$id\""))
+        }
+    }
+
+    @Test
     fun `glossary entries always carry a reading`() {
         val entries = Regex("\\{\\s*\"char\": \"[^\"]+\",\\s*\"pinyin\": \"([^\"]*)\"").findAll(raw).toList()
         assertTrue("生僻字速查不该是空的", entries.isNotEmpty())

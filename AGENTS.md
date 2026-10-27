@@ -116,6 +116,9 @@ python3 tools/sync_assets.py                     # 同步到 Android assets（�
 - 解析正文走 `cleanMarkdown()` 而不是 `cleanDisplay()`：后者是为维基抄来的脏文本设计的，会把行内空白吃掉，破坏 markdown 结构。
 - 正文属于 App 版本内容，**不参与探索状态的编码和备份**，避免老备份覆盖新指南。
 - 规则类内容（预约、放票、闭馆日）会过期，`sources` 字段必须在界面上如实展示来源和更新时间。
+- 目录页按 `MuseumGuide.GUIDE_LAYOUT` 分三组展示（心态与准备 / 各品类怎么看 / 现场与之后）。**新增一节要同时往这个常量里登记 id**，否则会落到「更多」组末尾——仍然可见，但位置不对，`MuseumGuideGroupingTest` 会盯着节不丢不重。
+- 品类之外另有三节**专题**：`kilns`（五大名窑）、`painting-history`（绘画史）、`calligraphy-history`（书法史），整理自剪藏笔记 `剪藏/五大名窑.md`、`剪藏/中国绘画的发展史.md`、`剪藏/中国书法的发展脉络.md`。它们是「知识地图」，和「看什么」的品类节并排，不复述后者的内容。
+- `glossary[].items[].hint` 是可选字段，写这条词落在哪一门知识里（`五大名窑 · 钧窑`、`元四家`），界面显示在释义下方。解析时走 `optionalString` 不过 `TextCleaner`——后者会把 ` · ` 两侧的空格压成零宽，`五大名窑 · 汝窑` 会粘成「五大名窑汝窑」。
 
 跑法：
 
